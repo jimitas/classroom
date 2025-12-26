@@ -33,6 +33,41 @@
 
 ---
 
+### ユーティリティ機能: クラスマスタ同期 ✅ 完了
+
+**実装日**: 2025年12月26日
+
+#### 機能概要
+- Google Classroomの現在の状態をクラスマスタシートに自動同期
+- 既存クラスの更新と新規クラスの追加に対応
+- クラス状態（Active/Archived）を自動判定
+- 既存の手動入力データ（履修登録マスタの列名、担当教員名など）を保持
+
+#### 主要関数
+- `syncClassMasterFromClassroom()` - Classroomの全クラスをクラスマスタに同期
+- `listAllMyCourses()` - 自分が教師として参加している全クラスを一覧表示
+- `getCourseIdFromEnrollmentCode()` - 招待コードからクラスIDを取得
+- `mapCourseState()` - Classroom APIのcourseStateをマッピング
+
+#### クラス状態マッピング
+
+| Classroom API | クラスマスタ | 説明 |
+|--------------|------------|------|
+| ACTIVE | Active | 運用中 |
+| ARCHIVED | Archived | アーカイブ済み |
+| PROVISIONED | New | 作成されたが未公開 |
+| DECLINED | Archived | 招待が拒否された |
+| SUSPENDED | Archived | 一時停止 |
+
+#### 科目有効性について
+
+**D列「科目有効性」の役割**:
+- **Phase 2（クラス作成）**: `TRUE` の科目のみクラスを作成
+- **Phase 4（履修登録）**: `TRUE` の科目のみ履修登録処理を実行
+- **用途例**: 休講科目や廃止科目を `FALSE` に設定
+
+---
+
 ## セットアップ手順
 
 ### 1. clasp設定
@@ -210,6 +245,8 @@ Classroom.Courses.update(course, courseId);
 | `testClassMasterData()` | クラスマスタデータの表示 |
 | `listAllMyCourses()` | 自分が教師のクラス一覧を表示 |
 | `getCourseIdFromEnrollmentCode(code)` | 招待コードからクラスIDを取得 |
+| `syncClassMasterFromClassroom()` | **NEW** Classroomの状態をクラスマスタに同期 |
+| `mapCourseState(apiState)` | **NEW** Classroom APIのcourseStateをマッピング |
 
 ### Phase 1（`src/phases/phase1_archive.gs`）
 
@@ -410,9 +447,12 @@ Classroom.Courses.update(course, courseId);
 | `e748ea7` | 2025-12-26 | Add helper functions to get Course ID from enrollment code |
 | `a586773` | 2025-12-26 | Fix Phase 1: Combine name update and archive into single API call |
 | `6458427` | 2025-12-26 | Fix: Remove id field from courses.update request body |
+| `eab1849` | 2025-12-26 | Add comprehensive development log (DEVELOPMENT.md) |
+| `9a0a3d4` | 2025-12-26 | Add syncClassMasterFromClassroom() to sync Classroom state to spreadsheet |
 
 ---
 
 **最終更新**: 2025年12月26日
 **Phase 1実装完了**: ✅
+**ユーティリティ機能実装完了**: ✅（クラスマスタ同期）
 **次のステップ**: Phase 2の実装
