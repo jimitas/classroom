@@ -39,24 +39,24 @@
 
 #### 機能概要
 - クラスマスタから状態が "New" かつ 科目有効性が "TRUE" のクラスを抽出
-- 管理者アカウントをオーナーとして新規クラスを作成
+- **スクリプト実行者**をオーナーとして新規クラスを作成
 - 作成後、クラスIDをクラスマスタに記録し、状態を "Active" に更新
 - DRY_RUNモードでテスト実行可能
+- 必要に応じて作成後に手動でオーナー移譲が可能
 
 #### 実装ファイル
 - `src/phases/phase2_create.gs` - Phase 2実装
 
 #### 主要関数
 - `runPhase2CreateClasses()` - Phase 2メイン処理
-- `createClass(classInfo, adminAccountId, dryRunMode)` - 個別クラスの作成
-- `createClassroomCourse(subjectName, sectionName, ownerId)` - Classroom API呼び出し
+- `createClass(classInfo, dryRunMode)` - 個別クラスの作成
+- `createClassroomCourse(subjectName, sectionName)` - Classroom API呼び出し
 
 #### 処理フロー
-1. システム設定から管理者アカウントIDを取得
-2. クラスマスタから対象クラスを抽出（状態=New, 科目有効性=TRUE）
-3. 各クラスを作成（Classroom API）
-4. クラスマスタを更新（クラスIDと状態）
-5. ログに記録
+1. クラスマスタから対象クラスを抽出（状態=New, 科目有効性=TRUE）
+2. 各クラスを作成（Classroom API、オーナー=実行者）
+3. クラスマスタを更新（クラスIDと状態）
+4. ログに記録
 
 ---
 
@@ -114,7 +114,6 @@ clasp push -f
 | 設定項目名 | 設定値 | 備考 |
 |-----------|--------|------|
 | DRY_RUN_MODE | TRUE | テスト実行モード（実際のAPI呼び出しなし） |
-| 管理者アカウントID | admin.it@school.jp | クラス作成時のオーナーアカウント（Phase 2で使用） |
 | デバッグモード | FALSE | 詳細ログ出力の有効化 |
 
 ### 3. GASエディタでの初回認証
@@ -231,6 +230,46 @@ Classroom.Courses.update(course, courseId);
 
 ---
 
+### 問題4: Phase 2でのオーナー指定エラー
+
+**症状**:
+- Phase 2実行時に以下のエラーが発生:
+```
+@UserCannotOwnCourse Please check that the user account exists.
+If you are attempting to create a course for another user,
+ensure that you are admin of their domain.
+```
+
+**原因**:
+- Classroom APIでは、別のユーザーをオーナーに指定してクラスを作成するには**ドメイン管理者権限が必要**
+- 一般ユーザーが `ownerId` パラメータを使用できない
+
+**解決策**:
+- `ownerId` パラメータを削除し、スクリプト実行者を自動的にオーナーとする
+- 必要に応じて作成後に手動でオーナー移譲を行う運用に変更
+
+**修正前のコード**:
+```javascript
+const course = {
+  name: subjectName,
+  ownerId: adminAccountId,  // これが原因
+  courseState: "ACTIVE"
+};
+```
+
+**修正後のコード**:
+```javascript
+const course = {
+  name: subjectName,
+  courseState: "ACTIVE"
+  // ownerIdを指定しない → 実行者が自動的にオーナーになる
+};
+```
+
+**実装コミット**: 修正中
+
+---
+
 ## テスト結果
 
 ### Phase 1アーカイブ機能
@@ -289,8 +328,8 @@ Classroom.Courses.update(course, courseId);
 | 関数名 | 説明 |
 |--------|------|
 | `runPhase2CreateClasses()` | Phase 2メイン処理 |
-| `createClass(classInfo, adminAccountId, dryRunMode)` | 個別クラスの作成 |
-| `createClassroomCourse(subjectName, sectionName, ownerId)` | Classroom API呼び出し |
+| `createClass(classInfo, dryRunMode)` | 個別クラスの作成 |
+| `createClassroomCourse(subjectName, sectionName)` | Classroom API呼び出し（オーナー=実行者） |
 
 ### 設定管理（`src/config.gs`）
 
@@ -299,7 +338,6 @@ Classroom.Courses.update(course, courseId);
 | `getSystemSetting(settingName)` | システム設定値を取得 |
 | `isDryRunMode()` | DRY_RUN_MODEかどうか確認 |
 | `isDebugMode()` | デバッグモードかどうか確認 |
-| `getAdminAccountId()` | 管理者アカウントIDを取得 |
 
 ### ログ記録（`src/utils/logger.gs`）
 
@@ -374,18 +412,9 @@ Classroom.Courses.update(course, courseId);
 
 ## 今後の開発予定
 
-### Phase 2: 新年度クラスの作成
+### Phase 2: 新年度クラスの作成 ✅ 完了
 
-**実装予定内容**:
-- クラス状態が "New" のクラスを抽出
-- 管理者アカウントをオーナーとしてクラス作成
-- 作成後、クラスIDをクラスマスタに記録
-- クラス状態を "Active" に更新
-
-**必要な実装**:
-- `src/phases/phase2_create.gs` の作成
-- `Classroom.Courses.create()` API呼び出し
-- クラスマスタの更新処理
+Phase 2は実装済みです。詳細は上部の「Phase 2: 新年度クラスの作成」セクションを参照してください。
 
 ---
 

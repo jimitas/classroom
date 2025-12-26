@@ -20,9 +20,7 @@ function runPhase2CreateClasses() {
       console.log("⚠️ DRY_RUN_MODE: 実際のAPI呼び出しは行いません");
     }
 
-    // 管理者アカウントIDを取得
-    const adminAccountId = getAdminAccountId();
-    console.log(`管理者アカウントID: ${adminAccountId}`);
+    console.log("クラスのオーナー: スクリプト実行者");
 
     // クラス状態が "New" かつ 科目有効性が TRUE のクラスを取得
     const allClasses = getClassesByState(CONFIG.CLASS_STATE.NEW);
@@ -40,7 +38,7 @@ function runPhase2CreateClasses() {
     // 各クラスに対して作成処理を実行
     for (const classInfo of classesToCreate) {
       try {
-        createClass(classInfo, adminAccountId, dryRunMode);
+        createClass(classInfo, dryRunMode);
         successCount++;
 
         // API Rate Limit対策: リクエスト間隔を空ける
@@ -71,10 +69,9 @@ function runPhase2CreateClasses() {
 /**
  * 個別クラスの作成処理
  * @param {Object} classInfo - クラス情報
- * @param {string} adminAccountId - 管理者アカウントID
  * @param {boolean} dryRunMode - DRY_RUNモードかどうか
  */
-function createClass(classInfo, adminAccountId, dryRunMode) {
+function createClass(classInfo, dryRunMode) {
   const subjectName = classInfo.subjectName;
   const sectionName = classInfo.section || ""; // セクション情報（オプション）
 
@@ -83,7 +80,7 @@ function createClass(classInfo, adminAccountId, dryRunMode) {
   if (dryRunMode) {
     // DRY_RUNモード: ログのみ記録
     console.log(`[DRY-RUN] クラス作成: ${subjectName}`);
-    console.log(`[DRY-RUN] オーナー: ${adminAccountId}`);
+    console.log(`[DRY-RUN] オーナー: スクリプト実行者`);
 
     // DRY-RUN用の仮クラスID
     const dummyCourseId = `DRYRUN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -92,14 +89,14 @@ function createClass(classInfo, adminAccountId, dryRunMode) {
       subjectName: subjectName,
       classroomId: dummyCourseId,
       result: "成功（DRY-RUN）",
-      message: `クラス「${subjectName}」を作成予定（オーナー: ${adminAccountId}）`,
+      message: `クラス「${subjectName}」を作成予定（オーナー: スクリプト実行者）`,
       executor: "Auto System (DRY-RUN)"
     });
   } else {
     // 実際のAPI呼び出し
     try {
-      // クラスを作成
-      const createdCourse = createClassroomCourse(subjectName, sectionName, adminAccountId);
+      // クラスを作成（オーナー: スクリプト実行者）
+      const createdCourse = createClassroomCourse(subjectName, sectionName);
       const courseId = createdCourse.id;
       debugLog(`クラス作成完了: ${subjectName} (${courseId})`);
 
@@ -115,7 +112,7 @@ function createClass(classInfo, adminAccountId, dryRunMode) {
         subjectName: subjectName,
         classroomId: courseId,
         result: "成功",
-        message: `クラス「${subjectName}」を作成しました（オーナー: ${adminAccountId}）`,
+        message: `クラス「${subjectName}」を作成しました（オーナー: スクリプト実行者）`,
         executor: "Auto System"
       });
 
@@ -139,14 +136,12 @@ function createClass(classInfo, adminAccountId, dryRunMode) {
  * Classroom APIを使用してクラスを作成
  * @param {string} subjectName - 科目名
  * @param {string} sectionName - セクション名（オプション）
- * @param {string} ownerId - オーナーのメールアドレス
  * @returns {Object} 作成されたクラス情報
  */
-function createClassroomCourse(subjectName, sectionName, ownerId) {
+function createClassroomCourse(subjectName, sectionName) {
   return executeWithRetry(() => {
     const course = {
       name: subjectName,
-      ownerId: ownerId,
       courseState: "ACTIVE"
     };
 
@@ -154,6 +149,8 @@ function createClassroomCourse(subjectName, sectionName, ownerId) {
     if (sectionName) {
       course.section = sectionName;
     }
+
+    // ownerIdを指定しない場合、スクリプト実行者が自動的にオーナーになる
 
     return Classroom.Courses.create(course);
   });
