@@ -142,6 +142,7 @@ function createClassroomCourse(subjectName, sectionName) {
   return executeWithRetry(() => {
     const course = {
       name: subjectName,
+      ownerId: 'me',  // 'me' = スクリプト実行者
       courseState: "ACTIVE"
     };
 
@@ -149,8 +150,6 @@ function createClassroomCourse(subjectName, sectionName) {
     if (sectionName) {
       course.section = sectionName;
     }
-
-    // ownerIdを指定しない場合、スクリプト実行者が自動的にオーナーになる
 
     return Classroom.Courses.create(course);
   });
