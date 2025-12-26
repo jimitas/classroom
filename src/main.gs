@@ -195,3 +195,97 @@ function logExecutionSummary(results) {
 
   console.log(`\n合計: 成功 ${totalSuccess}件, エラー ${totalError}件`);
 }
+
+/**
+ * 招待コードからクラスIDを取得（デバッグ用）
+ * @param {string} enrollmentCode - 招待コード
+ * @returns {string|null} クラスID
+ */
+function getCourseIdFromEnrollmentCode(enrollmentCode) {
+  try {
+    console.log(`招待コード「${enrollmentCode}」からクラスIDを検索中...`);
+
+    // すべてのクラスを取得
+    const courses = Classroom.Courses.list({
+      teacherId: 'me',
+      pageSize: 100
+    });
+
+    if (courses.courses && courses.courses.length > 0) {
+      // 招待コードが一致するクラスを検索
+      const targetCourse = courses.courses.find(course =>
+        course.enrollmentCode === enrollmentCode
+      );
+
+      if (targetCourse) {
+        console.log("✓ クラスが見つかりました！");
+        console.log("-".repeat(60));
+        console.log("クラス名:", targetCourse.name);
+        console.log("クラスID:", targetCourse.id);
+        console.log("招待コード:", targetCourse.enrollmentCode);
+        console.log("クラス状態:", targetCourse.courseState);
+        console.log("説明:", targetCourse.descriptionHeading || "なし");
+        console.log("-".repeat(60));
+        console.log("\n📋 クラスマスタに登録する場合:");
+        console.log(`  科目名: ${targetCourse.name}`);
+        console.log(`  クラスID: ${targetCourse.id}`);
+        console.log(`  クラス状態: Archived （アーカイブテストの場合）`);
+        return targetCourse.id;
+      } else {
+        console.log(`❌ 招待コード「${enrollmentCode}」に一致するクラスが見つかりません`);
+        console.log("あなたが教師として参加しているクラスを確認してください。");
+        console.log("→ listAllMyCourses() を実行してください");
+      }
+    } else {
+      console.log("❌ クラスが見つかりません（あなたが教師のクラスがありません）");
+    }
+
+    return null;
+  } catch (error) {
+    console.error("エラー:", error);
+    return null;
+  }
+}
+
+/**
+ * 自分が教師として参加しているすべてのクラスを表示
+ */
+function listAllMyCourses() {
+  try {
+    console.log("あなたが教師として参加しているクラスを取得中...");
+
+    const courses = Classroom.Courses.list({
+      teacherId: 'me',
+      pageSize: 100
+    });
+
+    if (courses.courses && courses.courses.length > 0) {
+      console.log("\n" + "=".repeat(80));
+      console.log("あなたのクラス一覧");
+      console.log("=".repeat(80));
+
+      courses.courses.forEach((course, index) => {
+        console.log(`\n【${index + 1}】 ${course.name}`);
+        console.log(`  クラスID: ${course.id}`);
+        console.log(`  招待コード: ${course.enrollmentCode || 'なし'}`);
+        console.log(`  状態: ${course.courseState}`);
+        console.log(`  セクション: ${course.section || 'なし'}`);
+        console.log(`  説明: ${course.descriptionHeading || 'なし'}`);
+        if (course.enrollmentCode) {
+          console.log(`  URL: https://classroom.google.com/r/${course.enrollmentCode}`);
+        }
+      });
+
+      console.log("\n" + "=".repeat(80));
+      console.log(`合計: ${courses.courses.length}クラス`);
+      console.log("=".repeat(80));
+    } else {
+      console.log("❌ クラスが見つかりません");
+      console.log("あなたが教師として参加しているクラスがありません。");
+    }
+  } catch (error) {
+    console.error("エラー:", error);
+    console.error("Classroom APIへのアクセスに失敗しました。");
+    console.error("権限の確認が必要な場合があります。");
+  }
+}
