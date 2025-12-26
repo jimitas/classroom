@@ -33,6 +33,33 @@
 
 ---
 
+### Phase 2: 新年度クラスの作成 ✅ 完了
+
+**実装日**: 2025年12月26日
+
+#### 機能概要
+- クラスマスタから状態が "New" かつ 科目有効性が "TRUE" のクラスを抽出
+- 管理者アカウントをオーナーとして新規クラスを作成
+- 作成後、クラスIDをクラスマスタに記録し、状態を "Active" に更新
+- DRY_RUNモードでテスト実行可能
+
+#### 実装ファイル
+- `src/phases/phase2_create.gs` - Phase 2実装
+
+#### 主要関数
+- `runPhase2CreateClasses()` - Phase 2メイン処理
+- `createClass(classInfo, adminAccountId, dryRunMode)` - 個別クラスの作成
+- `createClassroomCourse(subjectName, sectionName, ownerId)` - Classroom API呼び出し
+
+#### 処理フロー
+1. システム設定から管理者アカウントIDを取得
+2. クラスマスタから対象クラスを抽出（状態=New, 科目有効性=TRUE）
+3. 各クラスを作成（Classroom API）
+4. クラスマスタを更新（クラスIDと状態）
+5. ログに記録
+
+---
+
 ### ユーティリティ機能: クラスマスタ同期 ✅ 完了
 
 **実装日**: 2025年12月26日
@@ -239,14 +266,15 @@ Classroom.Courses.update(course, courseId);
 |--------|------|
 | `runAllPhases()` | 全フェーズを順次実行 |
 | `testPhase1()` | Phase 1のみテスト実行 |
+| `testPhase2()` | **NEW** Phase 2のみテスト実行 |
 | `runDryRun()` | DRY-RUNモードで実行 |
 | `testSystemSettings()` | システム設定の確認 |
 | `testSpreadsheetConnection()` | スプレッドシート接続テスト |
 | `testClassMasterData()` | クラスマスタデータの表示 |
 | `listAllMyCourses()` | 自分が教師のクラス一覧を表示 |
 | `getCourseIdFromEnrollmentCode(code)` | 招待コードからクラスIDを取得 |
-| `syncClassMasterFromClassroom()` | **NEW** Classroomの状態をクラスマスタに同期 |
-| `mapCourseState(apiState)` | **NEW** Classroom APIのcourseStateをマッピング |
+| `syncClassMasterFromClassroom()` | Classroomの状態をクラスマスタに同期 |
+| `mapCourseState(apiState)` | Classroom APIのcourseStateをマッピング |
 
 ### Phase 1（`src/phases/phase1_archive.gs`）
 
@@ -255,6 +283,14 @@ Classroom.Courses.update(course, courseId);
 | `runPhase1Archive()` | Phase 1メイン処理 |
 | `archiveClass(classInfo, dryRunMode)` | 個別クラスのアーカイブ |
 | `updateAndArchiveClassroom(courseId, newName)` | クラス名変更とアーカイブ |
+
+### Phase 2（`src/phases/phase2_create.gs`）
+
+| 関数名 | 説明 |
+|--------|------|
+| `runPhase2CreateClasses()` | Phase 2メイン処理 |
+| `createClass(classInfo, adminAccountId, dryRunMode)` | 個別クラスの作成 |
+| `createClassroomCourse(subjectName, sectionName, ownerId)` | Classroom API呼び出し |
 
 ### 設定管理（`src/config.gs`）
 

@@ -24,8 +24,11 @@ function runAllPhases() {
     // Phase 1: アーカイブ
     results.phase1 = runPhase1Archive();
 
-    // Phase 2, 3, 4は今後実装予定
-    console.log("\n⚠️ Phase 2, 3, 4は未実装です");
+    // Phase 2: クラス作成
+    results.phase2 = runPhase2CreateClasses();
+
+    // Phase 3, 4は今後実装予定
+    console.log("\n⚠️ Phase 3, 4は未実装です");
 
     // 全体結果のサマリー
     console.log("\n" + "=".repeat(60));
@@ -46,6 +49,15 @@ function testPhase1() {
   console.log("Phase 1テスト実行");
   const result = runPhase1Archive();
   console.log("Phase 1テスト完了:", result);
+}
+
+/**
+ * Phase 2のみを実行（テスト用）
+ */
+function testPhase2() {
+  console.log("Phase 2テスト実行");
+  const result = runPhase2CreateClasses();
+  console.log("Phase 2テスト完了:", result);
 }
 
 /**
