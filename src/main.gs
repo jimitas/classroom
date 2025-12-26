@@ -289,3 +289,128 @@ function listAllMyCourses() {
     console.error("権限の確認が必要な場合があります。");
   }
 }
+
+/**
+ * Classroomの現在の状態をクラスマスタに反映
+ * - 既存のクラスID（B列）と照合して更新
+ * - 新しいクラスは追加
+ * - 不明な列（C, F, G列）は既存値を保持または空白
+ */
+function syncClassMasterFromClassroom() {
+  try {
+    console.log("=".repeat(80));
+    console.log("Classroomの状態をクラスマスタに反映");
+    console.log("=".repeat(80));
+
+    // Classroom APIから現在のクラスを取得
+    const courses = Classroom.Courses.list({
+      teacherId: 'me',
+      pageSize: 100
+    });
+
+    if (!courses.courses || courses.courses.length === 0) {
+      console.log("❌ クラスが見つかりません");
+      return;
+    }
+
+    console.log(`取得したクラス数: ${courses.courses.length}`);
+
+    // スプレッドシートを開く
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CLASS_MASTER);
+
+    if (!sheet) {
+      throw new Error(`シート「${CONFIG.SHEET_NAMES.CLASS_MASTER}」が見つかりません`);
+    }
+
+    // 既存データを取得
+    const existingData = sheet.getDataRange().getValues();
+    const headers = existingData[0];
+
+    // 既存データをクラスIDでマップ化（B列 = クラスID）
+    const existingMap = new Map();
+    for (let i = 1; i < existingData.length; i++) {
+      const classroomId = existingData[i][1]; // B列
+      if (classroomId) {
+        existingMap.set(classroomId, {
+          rowIndex: i,
+          data: existingData[i]
+        });
+      }
+    }
+
+    let updateCount = 0;
+    let addCount = 0;
+
+    // 各クラスを処理
+    courses.courses.forEach(course => {
+      // courseStateをマッピング（ACTIVE → Active, ARCHIVED → Archived）
+      const mappedState = mapCourseState(course.courseState);
+
+      if (existingMap.has(course.id)) {
+        // 既存のクラスを更新
+        const existing = existingMap.get(course.id);
+        const rowIndex = existing.rowIndex;
+        const existingRow = existing.data;
+
+        // 更新する行データ（既存の不明な列は保持）
+        const updatedRow = [
+          course.name,                    // A: 科目名
+          course.id,                      // B: クラスID
+          existingRow[2] || course.name,  // C: 履修登録マスタの列名（既存値を保持、なければ科目名）
+          existingRow[3] || true,         // D: 科目有効性（既存値を保持、なければTRUE）
+          mappedState,                    // E: クラス状態
+          existingRow[5] || "",           // F: 担当教員名（既存値を保持）
+          existingRow[6] || ""            // G: 最終オーナーメールアドレス（既存値を保持）
+        ];
+
+        // スプレッドシートの行番号は1始まり
+        sheet.getRange(rowIndex + 1, 1, 1, updatedRow.length).setValues([updatedRow]);
+        console.log(`✓ 更新: ${course.name} (${course.id}) - ${mappedState}`);
+        updateCount++;
+
+      } else {
+        // 新しいクラスを追加
+        const newRow = [
+          course.name,                    // A: 科目名
+          course.id,                      // B: クラスID
+          course.name,                    // C: 履修登録マスタの列名（科目名と同じ）
+          true,                           // D: 科目有効性
+          mappedState,                    // E: クラス状態
+          "",                             // F: 担当教員名（空白）
+          ""                              // G: 最終オーナーメールアドレス（空白）
+        ];
+
+        sheet.appendRow(newRow);
+        console.log(`✓ 追加: ${course.name} (${course.id}) - ${mappedState}`);
+        addCount++;
+      }
+    });
+
+    console.log("\n" + "=".repeat(80));
+    console.log("同期完了");
+    console.log(`更新: ${updateCount}件, 追加: ${addCount}件`);
+    console.log("=".repeat(80));
+
+  } catch (error) {
+    console.error("エラー:", error);
+    throw error;
+  }
+}
+
+/**
+ * Classroom APIのcourseStateをクラスマスタの形式にマッピング
+ * @param {string} apiState - Classroom APIのcourseState
+ * @returns {string} クラスマスタの形式
+ */
+function mapCourseState(apiState) {
+  const stateMap = {
+    "ACTIVE": "Active",
+    "ARCHIVED": "Archived",
+    "PROVISIONED": "New",      // 作成されたが未公開
+    "DECLINED": "Archived",    // 招待が拒否された
+    "SUSPENDED": "Archived"    // 一時停止
+  };
+
+  return stateMap[apiState] || "Active";
+}
