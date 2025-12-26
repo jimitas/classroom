@@ -131,8 +131,8 @@ function updateAndArchiveClassroom(courseId, newName) {
     // クラス名とアーカイブ状態を同時に更新
     // Google Classroom APIはcourses.updateで部分更新ができないため、
     // 両方を同時に指定する必要がある
+    // 注意: リクエストボディにidを含めてはいけない（第2引数で渡す）
     const course = {
-      id: courseId,
       name: newName,
       courseState: "ARCHIVED"
     };
