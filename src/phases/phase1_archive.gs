@@ -92,13 +92,9 @@ function archiveClass(classInfo, dryRunMode) {
   } else {
     // 実際のAPI呼び出し
     try {
-      // クラス名を変更
-      updateClassroomName(classroomId, archivedName);
-      debugLog(`クラス名変更完了: ${archivedName}`);
-
-      // クラスをアーカイブ
-      archiveClassroom(classroomId);
-      debugLog(`アーカイブ完了: ${classroomId}`);
+      // クラス名変更とアーカイブを1回のAPI呼び出しで実行
+      updateAndArchiveClassroom(classroomId, archivedName);
+      debugLog(`クラス名変更とアーカイブ完了: ${archivedName}`);
 
       // 成功ログを記録
       logToProcessLog({
@@ -126,27 +122,18 @@ function archiveClass(classInfo, dryRunMode) {
 }
 
 /**
- * Classroom APIを使用してクラス名を変更
+ * Classroom APIを使用してクラス名を変更してアーカイブ
  * @param {string} courseId - クラスID
  * @param {string} newName - 新しいクラス名
  */
-function updateClassroomName(courseId, newName) {
+function updateAndArchiveClassroom(courseId, newName) {
   return executeWithRetry(() => {
+    // クラス名とアーカイブ状態を同時に更新
+    // Google Classroom APIはcourses.updateで部分更新ができないため、
+    // 両方を同時に指定する必要がある
     const course = {
-      name: newName
-    };
-
-    return Classroom.Courses.update(course, courseId);
-  });
-}
-
-/**
- * Classroom APIを使用してクラスをアーカイブ
- * @param {string} courseId - クラスID
- */
-function archiveClassroom(courseId) {
-  return executeWithRetry(() => {
-    const course = {
+      id: courseId,
+      name: newName,
       courseState: "ARCHIVED"
     };
 
