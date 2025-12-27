@@ -221,3 +221,47 @@ function getStudentAccount(studentId) {
 
   return null;
 }
+
+/**
+ * 履修登録マスタを取得
+ * @returns {Array<Array>} 履修登録マスタのデータ（2次元配列）
+ */
+function getEnrollmentMaster() {
+  return getSheetData(CONFIG.SHEET_NAMES.ENROLLMENT_MASTER);
+}
+
+/**
+ * 教員マスタを取得
+ * @returns {Array<Array>} 教員マスタのデータ（2次元配列）
+ */
+function getTeacherMaster() {
+  return getSheetData(CONFIG.SHEET_NAMES.TEACHER_MASTER);
+}
+
+/**
+ * アカウントマッピングを取得してマップ化
+ * @returns {Object} 学籍番号 → アカウント情報のマップ
+ */
+function getAccountMappingMap() {
+  const data = getSheetData(CONFIG.SHEET_NAMES.ACCOUNT_MAPPING);
+  const accountMap = {};
+
+  // ヘッダー行をスキップ（1行目）
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const studentId = row[0];    // A: 内部ID（学籍番号）
+    const email = row[1];         // B: Googleメールアドレス
+    const userId = row[2];        // C: GoogleユーザーID
+    const isActive = row[4];      // E: アカウント有効性
+
+    if (studentId) {
+      accountMap[studentId] = {
+        email: email,
+        userId: userId,
+        isActive: isActive
+      };
+    }
+  }
+
+  return accountMap;
+}

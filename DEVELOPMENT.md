@@ -111,6 +111,81 @@ TOPIC_STRUCTURE: [
 
 ---
 
+### Phase 4: 生徒・教員の一括登録 ✅ 完了
+
+**実装日**: 2025年12月27日
+
+#### 機能概要
+- クラスマスタから状態が "Active" かつ 科目有効性が "TRUE" のクラスを抽出
+- 履修登録マスタ・教員マスタ・アカウントマッピングを読み込み
+- マトリクス形式のデータを縦持ち形式に変換
+- クラスごとにグループ化して生徒・教員を一括登録
+- アカウント有効性とメールアドレスのバリデーション
+- DRY_RUNモードでテスト実行可能
+
+#### データ変換の仕組み
+
+**履修登録マスタ（横持ち→縦持ち）**:
+```
+入力（マトリクス）:
+| 氏名     | 学籍番号  | 国語 | 数学 | 英語 |
+| 田中太郎 | S2025001 | ○   | ○   |     |
+
+出力（縦持ち）:
+[
+  { studentId: "S2025001", studentName: "田中太郎", subjectName: "国語", classroomId: "..." },
+  { studentId: "S2025001", studentName: "田中太郎", subjectName: "数学", classroomId: "..." }
+]
+```
+
+**教員マスタ（横持ち→縦持ち）**:
+```
+入力（マトリクス）:
+| 教員氏名 | 教員メール        | 有効性 | 国語 | 数学 |
+| 山田先生 | yamada@school.jp | TRUE  | ○   |     |
+
+出力（縦持ち）:
+[
+  { teacherEmail: "yamada@school.jp", teacherName: "山田先生", subjectName: "国語", classroomId: "..." }
+]
+```
+
+#### 実装ファイル
+- `src/phases/phase4_members.gs` - Phase 4実装
+- `src/services/data_transformer.gs` - マトリクス→縦持ち変換
+- `src/services/sheet_service.gs` - データ読み込み関数追加
+
+#### 主要関数
+- `runPhase4RegisterMembers()` - Phase 4メイン処理
+- `registerMembersByClass(studentEnrollments, teacherAssignments, accountMap, dryRunMode)` - クラスごとにグループ化して登録
+- `registerClassMembers(classId, subjectName, students, teachers, accountMap, dryRunMode)` - 個別クラスのメンバー登録
+- `addStudentToClass(courseId, studentEmail)` - Classroom API呼び出し（生徒）
+- `addTeacherToClass(courseId, teacherEmail)` - Classroom API呼び出し（教員）
+- `transformEnrollmentDataToVertical(enrollmentData, classMasterMap)` - 履修登録マスタ変換
+- `transformTeacherDataToVertical(teacherData, classMasterMap)` - 教員マスタ変換
+- `createClassMasterMaps(classes)` - クラスマスタ検索マップ生成
+
+#### 処理フロー
+1. クラスマスタから対象クラスを抽出（状態=Active, 科目有効性=TRUE）
+2. 履修登録マスタ・教員マスタ・アカウントマッピングを読み込み
+3. クラスマスタの検索マップを生成（履修登録列名用・科目名用）
+4. 履修登録マスタを縦持ち変換（○マーク → 生徒履修リスト）
+5. 教員マスタを縦持ち変換（○マーク → 教員担当リスト）
+6. クラスIDごとにグループ化
+7. 各クラスに対して:
+   - 生徒を登録（Students.create API）
+   - 教員を共同教師として登録（Teachers.create API）
+   - アカウント無効・メール空白はスキップ
+8. ログに記録
+
+#### バリデーション機能
+- アカウント有効性チェック（isActive=FALSE はスキップ）
+- メールアドレス存在チェック（空白はスキップ）
+- 学籍番号の存在チェック
+- クラスIDの存在チェック
+
+---
+
 ### ユーティリティ機能: クラスマスタ同期 ✅ 完了
 
 **実装日**: 2025年12月26日
@@ -498,7 +573,8 @@ const classesToCreate = allClasses.filter(c => {
 | `runAllPhases()` | 全フェーズを順次実行 |
 | `testPhase1()` | Phase 1のみテスト実行 |
 | `testPhase2()` | Phase 2のみテスト実行 |
-| `testPhase3()` | **NEW** Phase 3のみテスト実行 |
+| `testPhase3()` | Phase 3のみテスト実行 |
+| `testPhase4()` | Phase 4のみテスト実行 |
 | `runDryRun()` | DRY-RUNモードで実行 |
 | `testSystemSettings()` | システム設定の確認 |
 | `testSpreadsheetConnection()` | スプレッドシート接続テスト |
@@ -532,6 +608,24 @@ const classesToCreate = allClasses.filter(c => {
 | `createTopicsForClass(classInfo, dryRunMode)` | 個別クラスのトピック作成 |
 | `getExistingTopics(courseId, dryRunMode)` | 既存トピック取得（重複チェック用） |
 | `createClassroomTopic(courseId, topicName)` | Classroom API呼び出し |
+
+### Phase 4（`src/phases/phase4_members.gs`）
+
+| 関数名 | 説明 |
+|--------|------|
+| `runPhase4RegisterMembers()` | Phase 4メイン処理 |
+| `registerMembersByClass(studentEnrollments, teacherAssignments, accountMap, dryRunMode)` | クラスごとにグループ化して登録 |
+| `registerClassMembers(classId, subjectName, students, teachers, accountMap, dryRunMode)` | 個別クラスのメンバー登録 |
+| `addStudentToClass(courseId, studentEmail)` | 生徒をクラスに追加（Classroom API） |
+| `addTeacherToClass(courseId, teacherEmail)` | 教員をクラスに追加（Classroom API） |
+
+### データ変換（`src/services/data_transformer.gs`）
+
+| 関数名 | 説明 |
+|--------|------|
+| `transformEnrollmentDataToVertical(enrollmentData, classMasterMap)` | 履修登録マスタを縦持ち変換 |
+| `transformTeacherDataToVertical(teacherData, classMasterMap)` | 教員マスタを縦持ち変換 |
+| `createClassMasterMaps(classes)` | クラスマスタ検索マップ生成 |
 
 ### 設定管理（`src/config.gs`）
 
@@ -572,6 +666,9 @@ const classesToCreate = allClasses.filter(c => {
 | `getEnrollmentData()` | 履修登録データ取得（縦持ち変換） |
 | `getTeacherData()` | 教員担当データ取得（縦持ち変換） |
 | `getStudentAccount(studentId)` | 学籍番号からGoogleアカウント取得 |
+| `getEnrollmentMaster()` | 履修登録マスタ全体を取得（2次元配列） |
+| `getTeacherMaster()` | 教員マスタ全体を取得（2次元配列） |
+| `getAccountMappingMap()` | アカウントマッピングをマップ化 |
 
 ---
 
@@ -617,39 +714,6 @@ Classroom.Courses.update(course, courseId);
 ### Phase 2: 新年度クラスの作成 ✅ 完了
 
 Phase 2は実装済みです。詳細は上部の「Phase 2: 新年度クラスの作成」セクションを参照してください。
-
----
-
-### Phase 3: トピックの作成
-
-**実装予定内容**:
-- クラス状態が "Active" のクラスを対象
-- 固定トピックパターンを逆順で作成:
-  1. お知らせ
-  2. 授業資料
-  3. 課題
-  4. テスト
-  5. その他
-
-**必要な実装**:
-- `src/phases/phase3_topics.gs` の作成
-- `Classroom.Courses.Topics.create()` API呼び出し
-
----
-
-### Phase 4: 生徒・教員の一括登録
-
-**実装予定内容**:
-- 履修登録マスタから生徒の履修情報を取得（マトリクス→縦持ち変換）
-- 教員マスタから教員の担当情報を取得（マトリクス→縦持ち変換）
-- アカウントマッピングからGoogleアカウント情報を取得
-- バッチ処理でClassroom APIに登録
-
-**必要な実装**:
-- `src/phases/phase4_members.gs` の作成
-- `src/services/data_transformer.gs` の作成（マトリクス変換）
-- `Classroom.Courses.Students.create()` API呼び出し
-- `Classroom.Courses.Teachers.create()` API呼び出し
 
 ---
 
@@ -723,6 +787,7 @@ Phase 2は実装済みです。詳細は上部の「Phase 2: 新年度クラス�
 | `95bcab1` | 2025-12-27 | Add duplicate prevention for Phase 2 class creation |
 | `3085182` | 2025-12-27 | Update DEVELOPMENT.md with Phase 2 implementation details |
 | `f3e27eb` | 2025-12-27 | Implement Phase 3: Topic creation for classes |
+| `492148e` | 2025-12-27 | Update DEVELOPMENT.md with Phase 3 test results |
 
 ---
 
@@ -730,5 +795,6 @@ Phase 2は実装済みです。詳細は上部の「Phase 2: 新年度クラス�
 **Phase 1実装完了**: ✅
 **Phase 2実装完了**: ✅
 **Phase 3実装完了**: ✅
+**Phase 4実装完了**: ✅
 **ユーティリティ機能実装完了**: ✅（クラスマスタ同期）
-**次のステップ**: Phase 4（生徒・教員の一括登録）
+**全フェーズ実装完了**: ✅
