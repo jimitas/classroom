@@ -791,6 +791,66 @@ Phase 2は実装済みです。詳細は上部の「Phase 2: 新年度クラス�
 
 ---
 
+## トラブルシューティング履歴
+
+### Phase 4: Students.create API 権限エラー (2025-12-27)
+
+#### 問題の概要
+Phase 4実装後、`Classroom.Courses.Students.create()` および `Classroom.Courses.Teachers.create()` APIで権限エラーが発生。
+
+#### エラー内容
+```
+HTTP 403: The caller does not have permission
+```
+
+#### 調査結果
+
+1. **OAuth Scopes**: ✅ 正しく設定済み
+   - `classroom.rosters` スコープが `appsscript.json` に含まれている
+   - 再承認後も同じエラー
+
+2. **権限確認**: ✅ 実行者はクラスオーナー
+   - `checkClassOwner()` 関数で確認済み
+   - スクリプト実行者（t-nonaka@office.kyoto-art.ac.jp）はクラスのオーナー
+
+3. **クラス状態**: ✅ ACTIVE
+   - クラスは正常に作成されており、ACTIVE状態
+
+4. **手動操作**: ✅ 可能
+   - Classroom UIから手動で生徒を招待することは可能（招待メール方式）
+
+5. **診断結果**:
+   ```json
+   {
+     "name": "GoogleJsonResponseException",
+     "details": {
+       "message": "The caller does not have permission",
+       "code": 403
+     }
+   }
+   ```
+
+#### 根本原因
+**Google Workspace管理コンソールでAPIアクセスが制限されている**
+
+- Apps Script経由での`Students.create()` API（直接追加）が管理者によってブロックされている
+- 手動での招待（Invitations）は許可されているが、API経由の直接追加は管理者権限が必要
+- ドメイン間（@office.kyoto-art.ac.jp ↔ @shs.kyoto-art.ac.jp）での操作にさらなる制限がある可能性
+
+#### 解決策
+**Invitations API に切り替え**
+
+`Students.create()` → `Invitations.create()` に変更:
+- 生徒に招待メールを送信
+- 生徒が「承諾」ボタンをクリックして参加
+- より緩い権限で動作（管理者設定の影響を受けにくい）
+- 手動操作と同じフロー
+
+#### DX部門への依頼事項
+Google Workspace管理者に以下の設定確認を依頼中（別途 `DX_API_ACCESS_REQUEST.md` 参照）
+
+---
+
 ## コミット履歴
 
 | コミットID | 日付 | 内容 |
