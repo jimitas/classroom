@@ -12,7 +12,8 @@
       "Bash(mkdir:*)",
       "Bash(clasp push:*)",
       "WebSearch",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(echo:*)"
     ]
   }
 }
