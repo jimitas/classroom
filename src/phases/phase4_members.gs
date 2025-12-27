@@ -167,7 +167,7 @@ function registerMembersByClass(studentEnrollments, teacherAssignments, accountM
         totalTeachers += result.teacherCount;
       }
 
-      // API Rate Limit対策
+      // API Rate Limit対策: クラス間のみ待機（同一クラス内のメンバーは連続送信）
       if (!dryRunMode && !result.skipped) {
         Utilities.sleep(CONFIG.API_SETTINGS.REQUEST_INTERVAL_MS);
       }
@@ -221,9 +221,6 @@ function registerClassMembers(classId, subjectName, students, teachers, accountM
         addStudentToClass(classId, accountMap[student.studentId].email);
         studentCount++;
         debugLog(`生徒招待送信成功: ${student.studentName} → ${subjectName}`);
-
-        // API間隔
-        Utilities.sleep(CONFIG.API_SETTINGS.REQUEST_INTERVAL_MS);
       } catch (error) {
         errors.push(`生徒「${student.studentName}」: ${error.message}`);
       }
@@ -245,9 +242,6 @@ function registerClassMembers(classId, subjectName, students, teachers, accountM
         addTeacherToClass(classId, teacher.teacherEmail);
         teacherCount++;
         debugLog(`教員招待送信成功: ${teacher.teacherName} → ${subjectName}`);
-
-        // API間隔
-        Utilities.sleep(CONFIG.API_SETTINGS.REQUEST_INTERVAL_MS);
       } catch (error) {
         errors.push(`教員「${teacher.teacherName}」: ${error.message}`);
       }
