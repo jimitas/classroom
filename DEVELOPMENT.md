@@ -838,16 +838,23 @@ HTTP 403: The caller does not have permission
 - ドメイン間（@office.kyoto-art.ac.jp ↔ @shs.kyoto-art.ac.jp）での操作にさらなる制限がある可能性
 
 #### 解決策
-**Invitations API に切り替え**
+**Invitations API に切り替え** ✅ **実装完了・動作確認済み**
 
 `Students.create()` → `Invitations.create()` に変更:
-- 生徒に招待メールを送信
-- 生徒が「承諾」ボタンをクリックして参加
+- 生徒に招待メールを送信（role: STUDENT）
+- 教員に招待メールを送信（role: TEACHER）
+- 招待受信者が「承諾」ボタンをクリックして参加
 - より緩い権限で動作（管理者設定の影響を受けにくい）
 - 手動操作と同じフロー
 
-#### DX部門への依頼事項
-Google Workspace管理者に以下の設定確認を依頼中（別途 `DX_API_ACCESS_REQUEST.md` 参照）
+**実装結果**:
+- ✅ `addStudentToClass()` を Invitations API に変更
+- ✅ `addTeacherToClass()` を Invitations API に変更
+- ✅ ログメッセージを「招待送信」に更新
+- ✅ README.md に招待フローの説明を追加
+- ✅ テスト実行で正常動作を確認
+
+**DX部門への依頼**: 不要（Invitations API で解決）
 
 ---
 
