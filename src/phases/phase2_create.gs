@@ -24,11 +24,31 @@ function runPhase2CreateClasses() {
 
     // クラス状態が "New" かつ 科目有効性が TRUE のクラスを取得
     const allClasses = getClassesByState(CONFIG.CLASS_STATE.NEW);
-    const classesToCreate = allClasses.filter(c => c.isActive === true || c.isActive === "TRUE");
+
+    // クラスIDが空のもののみをフィルタリング（重複作成防止）
+    const classesToCreate = allClasses.filter(c => {
+      const isActive = c.isActive === true || c.isActive === "TRUE";
+      const hasNoClassroomId = !c.classroomId || c.classroomId === "";
+      return isActive && hasNoClassroomId;
+    });
+
+    // スキップされたクラスをログ出力
+    const skippedClasses = allClasses.filter(c => {
+      const isActive = c.isActive === true || c.isActive === "TRUE";
+      const hasClassroomId = c.classroomId && c.classroomId !== "";
+      return isActive && hasClassroomId;
+    });
+
+    if (skippedClasses.length > 0) {
+      console.log(`スキップ: ${skippedClasses.length}件（既にクラスIDが存在）`);
+      skippedClasses.forEach(c => {
+        console.log(`  - ${c.subjectName} (${c.classroomId})`);
+      });
+    }
 
     if (classesToCreate.length === 0) {
       console.log("作成対象のクラスはありません");
-      console.log("※ クラス状態が「New」かつ科目有効性が「TRUE」のクラスがありません");
+      console.log("※ クラス状態が「New」かつ科目有効性が「TRUE」かつクラスIDが空のクラスがありません");
       logPhaseComplete("Phase 2", successCount, errorCount);
       return { successCount, errorCount };
     }
