@@ -113,9 +113,9 @@ function debugPhase4Data() {
   });
 
   // 3. 履修登録マスタのヘッダー確認
-  console.log(`\n履修登録マスタ ヘッダー（3列目以降）:`);
+  console.log(`\n履修登録マスタ ヘッダー（A:氏名 B:学籍番号 C:有効 D以降:科目）:`);
   const headers = enrollmentData[0];
-  for (let i = 2; i < headers.length; i++) {
+  for (let i = 0; i < Math.min(headers.length, 10); i++) {
     console.log(`  列${i}: "${headers[i]}"`);
   }
 

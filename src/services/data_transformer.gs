@@ -12,10 +12,10 @@
  *
  * @example
  * 入力（enrollmentData）:
- * | 氏名     | 学籍番号  | 国語 | 数学 | 英語 |
- * |----------|----------|------|------|------|
- * | 田中 太郎 | S2025001 | ○    | ○    |      |
- * | 佐藤 花子 | S2025002 |      | ○    | ○    |
+ * | 氏名     | 学籍番号  | 有効 | 国語 | 数学 | 英語 |
+ * |----------|----------|------|------|------|------|
+ * | 田中 太郎 | S2025001 | TRUE | ○    | ○    |      |
+ * | 佐藤 花子 | S2025002 | TRUE |      | ○    | ○    |
  *
  * 出力:
  * [
@@ -37,16 +37,24 @@ function transformEnrollmentDataToVertical(enrollmentData, classMasterMap) {
   const headers = enrollmentData[0];
   const studentNameCol = 0;  // A列: 氏名
   const studentIdCol = 1;    // B列: 学籍番号
-  const subjectStartCol = 2; // C列以降: 科目
+  const isActiveCol = 2;     // C列: 有効フラグ
+  const subjectStartCol = 3; // D列以降: 科目
 
   // 2行目以降がデータ行
   for (let i = 1; i < enrollmentData.length; i++) {
     const row = enrollmentData[i];
     const studentName = row[studentNameCol];
     const studentId = row[studentIdCol];
+    const isActive = row[isActiveCol];
 
     // 学籍番号が空の場合はスキップ
     if (!studentId || studentId === "") {
+      continue;
+    }
+
+    // 有効フラグがFALSEの場合はスキップ（転入生追加時の既登録者除外）
+    if (isActive === false || isActive === "FALSE" || isActive === "") {
+      debugLog(`スキップ: 生徒「${studentName}」(${studentId})は有効フラグ=FALSE`);
       continue;
     }
 
