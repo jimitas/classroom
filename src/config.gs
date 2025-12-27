@@ -29,6 +29,15 @@ const CONFIG = {
     ARCHIVED: "Archived"  // アーカイブ対象
   },
 
+  // トピック構造（逆順で定義 - この順で作成される）
+  TOPIC_STRUCTURE: [
+    "その他",
+    "テスト",
+    "課題",
+    "授業資料",
+    "お知らせ"
+  ],
+
   // エラーコード
   ERROR_CODES: {
     ERR_001: "APIトークン期限切れ",

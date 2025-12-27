@@ -66,6 +66,7 @@ function getClassesByState(classState) {
     const state = row[4];              // E: クラス状態
     const teacherName = row[5];        // F: 担当教員名
     const ownerEmail = row[6];         // G: 最終オーナーメールアドレス
+    const createTopics = row[7];       // H: トピック作成
 
     // 指定された状態のクラスのみ抽出
     if (state === classState) {
@@ -77,6 +78,7 @@ function getClassesByState(classState) {
         state: state,
         teacherName: teacherName,
         ownerEmail: ownerEmail,
+        createTopics: createTopics,   // トピック作成フラグ
         rowIndex: i // 更新用に行番号を保持
       });
     }

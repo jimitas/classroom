@@ -27,8 +27,11 @@ function runAllPhases() {
     // Phase 2: クラス作成
     results.phase2 = runPhase2CreateClasses();
 
-    // Phase 3, 4は今後実装予定
-    console.log("\n⚠️ Phase 3, 4は未実装です");
+    // Phase 3: トピック作成
+    results.phase3 = runPhase3CreateTopics();
+
+    // Phase 4は今後実装予定
+    console.log("\n⚠️ Phase 4は未実装です");
 
     // 全体結果のサマリー
     console.log("\n" + "=".repeat(60));
@@ -58,6 +61,15 @@ function testPhase2() {
   console.log("Phase 2テスト実行");
   const result = runPhase2CreateClasses();
   console.log("Phase 2テスト完了:", result);
+}
+
+/**
+ * Phase 3のみを実行（テスト用）
+ */
+function testPhase3() {
+  console.log("Phase 3テスト実行");
+  const result = runPhase3CreateTopics();
+  console.log("Phase 3テスト完了:", result);
 }
 
 /**
