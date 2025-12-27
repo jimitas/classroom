@@ -9,22 +9,22 @@
  */
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
+
+  // 現在のDRY_RUNモード状態を取得
+  const dryRunMode = isDryRunMode();
+  const modeLabel = dryRunMode ? '🧪 テストモード' : '▶️ 本番モード';
+
   ui.createMenu('📚 Classroom自動化')
-    .addSubMenu(ui.createMenu('🧪 テスト実行（DRY-RUN）')
-      .addItem('Phase 1: アーカイブテスト', 'testPhase1')
-      .addItem('Phase 2: クラス作成テスト', 'testPhase2')
-      .addItem('Phase 3: トピック作成テスト', 'testPhase3')
-      .addItem('Phase 4: メンバー招待テスト', 'testPhase4'))
+    .addItem('Phase 1: 旧年度クラスをアーカイブ', 'runPhase1Archive')
+    .addItem('Phase 2: 新年度クラスを作成', 'runPhase2CreateClasses')
+    .addItem('Phase 3: トピックを作成', 'runPhase3CreateTopics')
+    .addItem('Phase 4: 生徒・教員を招待', 'runPhase4RegisterMembers')
     .addSeparator()
-    .addSubMenu(ui.createMenu('▶️ 本番実行')
-      .addItem('Phase 1: 旧年度クラスをアーカイブ', 'runPhase1Archive')
-      .addItem('Phase 2: 新年度クラスを作成', 'runPhase2CreateClasses')
-      .addItem('Phase 3: トピックを作成', 'runPhase3CreateTopics')
-      .addItem('Phase 4: 生徒・教員を招待', 'runPhase4RegisterMembers'))
+    .addItem(`現在: ${modeLabel}`, 'showCurrentMode')
+    .addItem('🔧 DRY_RUNモードを切り替え', 'toggleDryRunMode')
     .addSeparator()
-    .addSubMenu(ui.createMenu('🔧 ユーティリティ')
-      .addItem('Classroomからクラスマスタを同期', 'syncClassMasterFromClassroom')
-      .addItem('使い方ガイドを更新', 'updateUsageGuideSheet'))
+    .addItem('🔄 Classroomからクラスマスタを同期', 'syncClassMasterFromClassroom')
+    .addItem('📖 使い方ガイドを更新', 'updateUsageGuideSheet')
     .addToUi();
 }
 
@@ -144,6 +144,108 @@ function updateUsageGuideSheet() {
     console.error('使い方ガイド更新エラー:', error);
     SpreadsheetApp.getActiveSpreadsheet().toast('エラー: ' + error.message, 'エラー', 5);
     throw error;
+  }
+}
+
+/**
+ * 現在のモードを表示
+ */
+function showCurrentMode() {
+  const dryRunMode = isDryRunMode();
+  const ui = SpreadsheetApp.getUi();
+
+  if (dryRunMode) {
+    ui.alert(
+      '現在のモード',
+      '🧪 テストモード（DRY_RUN）\n\n' +
+      '実際のAPI呼び出しは行われません。\n' +
+      '登録処理ログに「（DRY-RUN）」と記録されます。\n\n' +
+      '本番モードに切り替えるには:\n' +
+      'メニュー → 🔧 DRY_RUNモードを切り替え',
+      ui.ButtonSet.OK
+    );
+  } else {
+    ui.alert(
+      '現在のモード',
+      '▶️ 本番モード\n\n' +
+      '⚠️ 実際にClassroom APIを呼び出します！\n' +
+      'クラスの作成・アーカイブ・招待送信が実行されます。\n\n' +
+      'テストモードに切り替えるには:\n' +
+      'メニュー → 🔧 DRY_RUNモードを切り替え',
+      ui.ButtonSet.OK
+    );
+  }
+}
+
+/**
+ * DRY_RUNモードを切り替え
+ */
+function toggleDryRunMode() {
+  const ui = SpreadsheetApp.getUi();
+  const currentMode = isDryRunMode();
+
+  // 現在のモードを表示
+  const currentModeText = currentMode ? '🧪 テストモード（DRY_RUN）' : '▶️ 本番モード';
+  const newModeText = currentMode ? '▶️ 本番モード' : '🧪 テストモード（DRY_RUN）';
+
+  // 確認ダイアログ
+  const response = ui.alert(
+    'モード切り替え確認',
+    `現在: ${currentModeText}\n\n` +
+    `${newModeText} に切り替えますか？\n\n` +
+    (currentMode
+      ? '⚠️ 本番モードでは実際にAPI呼び出しが行われます！'
+      : 'テストモードでは実際のAPI呼び出しは行われません。'),
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response === ui.Button.YES) {
+    try {
+      // スプレッドシートの設定を更新
+      const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+      const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SYSTEM_SETTINGS);
+
+      if (!sheet) {
+        throw new Error('シート「システム設定 」が見つかりません');
+      }
+
+      const data = sheet.getDataRange().getValues();
+      let updated = false;
+
+      // DRY_RUN_MODEの行を探して更新
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === 'DRY_RUN_MODE') {
+          const newValue = currentMode ? 'FALSE' : 'TRUE';
+          sheet.getRange(i + 1, 2).setValue(newValue);
+          updated = true;
+          break;
+        }
+      }
+
+      if (!updated) {
+        throw new Error('DRY_RUN_MODE設定が見つかりません。システム設定シートを確認してください。');
+      }
+
+      // 成功メッセージ
+      const successMessage = currentMode
+        ? '✅ 本番モードに切り替えました\n\n⚠️ 次回実行時から実際のAPI呼び出しが行われます！'
+        : '✅ テストモードに切り替えました\n\n実際のAPI呼び出しは行われません。';
+
+      ui.alert('切り替え完了', successMessage, ui.ButtonSet.OK);
+
+      // メニューを更新（リロード）
+      SpreadsheetApp.getActiveSpreadsheet().toast(
+        'モードを切り替えました。メニュー表示を更新するにはページをリロードしてください。',
+        '成功',
+        5
+      );
+
+    } catch (error) {
+      ui.alert('エラー', 'モード切り替えに失敗しました:\n' + error.message, ui.ButtonSet.OK);
+      console.error('モード切り替えエラー:', error);
+    }
+  } else {
+    ui.alert('キャンセル', 'モード切り替えをキャンセルしました。', ui.ButtonSet.OK);
   }
 }
 
