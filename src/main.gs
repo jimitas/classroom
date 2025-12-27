@@ -5,6 +5,149 @@
  */
 
 /**
+ * スプレッドシート起動時にカスタムメニューを追加
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('📚 Classroom自動化')
+    .addSubMenu(ui.createMenu('🧪 テスト実行（DRY-RUN）')
+      .addItem('Phase 1: アーカイブテスト', 'testPhase1')
+      .addItem('Phase 2: クラス作成テスト', 'testPhase2')
+      .addItem('Phase 3: トピック作成テスト', 'testPhase3')
+      .addItem('Phase 4: メンバー招待テスト', 'testPhase4'))
+    .addSeparator()
+    .addSubMenu(ui.createMenu('▶️ 本番実行')
+      .addItem('Phase 1: 旧年度クラスをアーカイブ', 'runPhase1Archive')
+      .addItem('Phase 2: 新年度クラスを作成', 'runPhase2CreateClasses')
+      .addItem('Phase 3: トピックを作成', 'runPhase3CreateTopics')
+      .addItem('Phase 4: 生徒・教員を招待', 'runPhase4RegisterMembers'))
+    .addSeparator()
+    .addSubMenu(ui.createMenu('🔧 ユーティリティ')
+      .addItem('Classroomからクラスマスタを同期', 'syncClassMasterFromClassroom')
+      .addItem('使い方ガイドを更新', 'updateUsageGuideSheet'))
+    .addToUi();
+}
+
+/**
+ * 使い方ガイドをスプレッドシートに書き込み
+ */
+function updateUsageGuideSheet() {
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('使い方ガイド');
+
+    if (!sheet) {
+      throw new Error('シート「使い方ガイド」が見つかりません。先にシートを作成してください。');
+    }
+
+    // シートをクリア
+    sheet.clear();
+
+    // ヘッダー行の設定
+    sheet.getRange('A1:B1').setBackground('#4285F4').setFontColor('#FFFFFF').setFontWeight('bold').setFontSize(12);
+
+    // 使い方ガイドの内容
+    const guideData = [
+      ['Google Classroom 年度更新自動化システム - 使い方ガイド', ''],
+      ['', ''],
+      ['📋 基本操作', ''],
+      ['メニューからの実行', 'スプレッドシート上部の「📚 Classroom自動化」メニューから各機能を実行できます'],
+      ['', ''],
+      ['🧪 テスト実行の手順', ''],
+      ['1. DRY_RUNモードを有効化', '「システム設定 」シートでDRY_RUN_MODEをTRUEに設定'],
+      ['2. テスト実行', 'メニュー → 🧪 テスト実行 → 各Phaseを選択'],
+      ['3. 結果確認', '「登録処理ログ」シートで結果を確認（DRY-RUN表示あり）'],
+      ['', ''],
+      ['▶️ 本番実行の手順', ''],
+      ['1. DRY_RUNモードを無効化', '「システム設定 」シートでDRY_RUN_MODEをFALSEに設定'],
+      ['2. 本番実行', 'メニュー → ▶️ 本番実行 → 各Phaseを選択'],
+      ['3. 結果確認', '「登録処理ログ」と「エラー未処理リスト」シートを確認'],
+      ['', ''],
+      ['📝 各Phaseの説明', ''],
+      ['Phase 1: 旧年度クラスのアーカイブ', 'クラスマスタで状態が「Archived」のクラスを自動アーカイブ'],
+      ['', '→ クラス名に年度プレフィックスを付与（例: 2025_数学）'],
+      ['Phase 2: 新年度クラスの作成', 'クラスマスタで状態が「New」かつ科目有効性が「TRUE」のクラスを作成'],
+      ['', '→ 作成後、クラスIDを記録し状態を「Active」に更新'],
+      ['Phase 3: トピックの作成', '状態が「Active」かつトピック作成フラグが「TRUE」のクラスにトピックを作成'],
+      ['', '→ 5つの標準トピック（お知らせ、授業資料、課題、テスト、その他）'],
+      ['Phase 4: 生徒・教員の招待', '履修登録マスタ・教員マスタから対象者を抽出し、招待メールを送信'],
+      ['', '→ 生徒・教員は招待メールの「承諾」ボタンをクリックして参加'],
+      ['', ''],
+      ['🔧 ユーティリティ機能', ''],
+      ['Classroomからクラスマスタを同期', 'Classroomの現在の状態をスプレッドシートに反映'],
+      ['', '→ クラス名、状態（Active/Archived）を自動更新'],
+      ['使い方ガイドを更新', 'この使い方ガイドを最新の内容に更新'],
+      ['', ''],
+      ['⚠️ 重要な注意事項', ''],
+      ['DRY_RUNモードの確認', '本番実行前に必ずDRY_RUNモードでテストしてください'],
+      ['招待の承諾', 'Phase 4実行後、生徒・教員は招待メールを承諾する必要があります'],
+      ['エラーの確認', '実行後は必ず「登録処理ログ」と「エラー未処理リスト」を確認してください'],
+      ['', ''],
+      ['📊 ログの見方', ''],
+      ['登録処理ログ', '全ての処理結果が記録されます（成功・失敗・スキップ）'],
+      ['エラー未処理リスト', 'エラーが発生した場合の詳細が記録されます'],
+      ['', ''],
+      ['🆘 トラブルシューティング', ''],
+      ['DRY_RUN_MODE設定が見つからない', '「システム設定 」シートにA列「DRY_RUN_MODE」、B列「TRUE」を追加'],
+      ['シートが見つかりません', '要件定義書に従って必須シートを作成してください'],
+      ['権限不足エラー', 'GASエディタで関数を実行し、権限の許可を承認してください'],
+      ['', ''],
+      ['📚 参考資料', ''],
+      ['詳細な使い方', 'README.mdを参照'],
+      ['開発ログ', 'DEVELOPMENT.mdを参照'],
+      ['今後の機能追加予定', 'FUTURE_FEATURES.mdを参照'],
+      ['', ''],
+      ['最終更新', new Date().toLocaleString('ja-JP')]
+    ];
+
+    // データを書き込み
+    sheet.getRange(1, 1, guideData.length, 2).setValues(guideData);
+
+    // 列幅を調整
+    sheet.setColumnWidth(1, 350);
+    sheet.setColumnWidth(2, 600);
+
+    // タイトル行のスタイル
+    sheet.getRange('A1:B1').merge().setHorizontalAlignment('center');
+
+    // セクションヘッダーのスタイル（絵文字で始まる行）
+    for (let i = 1; i <= guideData.length; i++) {
+      const cellValue = sheet.getRange(i, 1).getValue();
+      if (cellValue && (cellValue.toString().startsWith('📋') ||
+                        cellValue.toString().startsWith('🧪') ||
+                        cellValue.toString().startsWith('▶️') ||
+                        cellValue.toString().startsWith('📝') ||
+                        cellValue.toString().startsWith('🔧') ||
+                        cellValue.toString().startsWith('⚠️') ||
+                        cellValue.toString().startsWith('📊') ||
+                        cellValue.toString().startsWith('🆘') ||
+                        cellValue.toString().startsWith('📚'))) {
+        sheet.getRange(i, 1, 1, 2).setBackground('#E8F0FE').setFontWeight('bold').setFontSize(11);
+      }
+    }
+
+    // Phase説明行のインデント
+    for (let i = 1; i <= guideData.length; i++) {
+      const cellValue = sheet.getRange(i, 2).getValue();
+      if (cellValue && cellValue.toString().startsWith('→')) {
+        sheet.getRange(i, 2).setFontColor('#666666').setFontStyle('italic');
+      }
+    }
+
+    // 枠線を追加
+    sheet.getRange(1, 1, guideData.length, 2).setBorder(true, true, true, true, true, true);
+
+    console.log('✅ 使い方ガイドを更新しました');
+    SpreadsheetApp.getActiveSpreadsheet().toast('使い方ガイドを更新しました', '成功', 3);
+
+  } catch (error) {
+    console.error('使い方ガイド更新エラー:', error);
+    SpreadsheetApp.getActiveSpreadsheet().toast('エラー: ' + error.message, 'エラー', 5);
+    throw error;
+  }
+}
+
+/**
  * 全フェーズを順次実行
  */
 function runAllPhases() {
@@ -452,188 +595,11 @@ function mapCourseState(apiState) {
  * クラスのオーナー情報を確認（デバッグ用）
  * @param {string} courseId - クラスID（省略時は"823999925372"）
  */
-function checkClassOwner(courseId) {
-  if (!courseId) {
-    courseId = "823999925372";  // デフォルトのクラスID
-  }
-
-  try {
-    const course = Classroom.Courses.get(courseId);
-
-    // 現在のユーザー情報を取得（Classroom API使用）
-    const currentUser = Classroom.UserProfiles.get('me');
-    const executorEmail = currentUser.emailAddress;
-
-    console.log("=".repeat(60));
-    console.log("クラス情報");
-    console.log("=".repeat(60));
-    console.log("クラス名:", course.name);
-    console.log("クラスID:", course.id);
-    console.log("オーナーID:", course.ownerId);
-    console.log("クラス状態:", course.courseState);
-    console.log("\nスクリプト実行者:", executorEmail);
-    console.log("実行者ID:", currentUser.id);
-
-    // 教師一覧を取得
-    console.log("\n" + "=".repeat(60));
-    console.log("教師一覧");
-    console.log("=".repeat(60));
-    const teachers = Classroom.Courses.Teachers.list(courseId);
-    if (teachers.teachers && teachers.teachers.length > 0) {
-      teachers.teachers.forEach(t => {
-        const isOwner = t.userId === course.ownerId ? " ★オーナー" : "";
-        const isExecutor = t.userId === currentUser.id ? " (あなた)" : "";
-        console.log(`  - ${t.profile.name.fullName} (${t.profile.emailAddress})${isOwner}${isExecutor}`);
-      });
-    } else {
-      console.log("  教師が見つかりません");
-    }
-
-    // スクリプト実行者が教師かどうか確認
-    const isTeacher = teachers.teachers && teachers.teachers.some(t =>
-      t.userId === currentUser.id
-    );
-    const isOwner = course.ownerId === currentUser.id;
-
-    console.log("\n" + "=".repeat(60));
-    console.log("権限チェック");
-    console.log("=".repeat(60));
-    console.log("スクリプト実行者は教師:", isTeacher ? "はい ✅" : "いいえ ❌");
-    console.log("スクリプト実行者はオーナー:", isOwner ? "はい ✅" : "いいえ ❌");
-
-    if (!isTeacher) {
-      console.log("\n⚠️ このクラスに対する権限がありません");
-      console.log("対処方法: Classroomでこのクラスに共同教師として追加してください");
-    } else if (!isOwner) {
-      console.log("\n⚠️ 教員を追加するにはオーナー権限が必要です");
-      console.log("対処方法: Classroomでオーナーを移譲してもらってください");
-    } else {
-      console.log("\n✅ 生徒・教員の追加が可能です");
-    }
-
-  } catch (error) {
-    console.error("エラー:", error);
-    console.error("クラスへのアクセス権限がない可能性があります");
-  }
-}
-
 /**
- * Phase 4デバッグ用（一時的な関数）
+ * デバッグ関数は src/debug/debug_tools.gs に移動しました
+ *
+ * 利用可能なデバッグ関数:
+ * - checkClassOwner(courseId) - クラスオーナー権限の確認
+ * - debugPhase4Data() - Phase 4データ変換結果の表示
+ * - diagnoseApiPermission() - API権限の詳細診断
  */
-function debugPhase4Data() {
-  console.log("=== Phase 4 デバッグ ===");
-
-  // 1. Active クラスを取得
-  const allClasses = getClassesByState(CONFIG.CLASS_STATE.ACTIVE);
-  const activeClasses = allClasses.filter(c => c.isActive === true || c.isActive === "TRUE");
-
-  console.log(`\nActive クラス数: ${activeClasses.length}`);
-  activeClasses.forEach(c => {
-    console.log(`  - 科目名: "${c.subjectName}", 履修列名: "${c.enrollmentColumn}", ID: ${c.classroomId}`);
-  });
-
-  // 2. データ変換
-  const classMaps = createClassMasterMaps(activeClasses);
-
-  console.log(`\n履修列マップ:`, Object.keys(classMaps.byEnrollmentColumn));
-  console.log(`科目名マップ:`, Object.keys(classMaps.bySubjectName));
-
-  const enrollmentData = getEnrollmentMaster();
-  const teacherData = getTeacherMaster();
-
-  const studentEnrollments = transformEnrollmentDataToVertical(enrollmentData, classMaps.byEnrollmentColumn);
-  const teacherAssignments = transformTeacherDataToVertical(teacherData, classMaps.bySubjectName);
-
-  console.log(`\n生徒履修データ: ${studentEnrollments.length}件`);
-  studentEnrollments.forEach(e => {
-    console.log(`  - ${e.studentName} (${e.studentId}) → "${e.subjectName}" (${e.classroomId || "IDなし"})`);
-  });
-
-  console.log(`\n教員担当データ: ${teacherAssignments.length}件`);
-  teacherAssignments.forEach(t => {
-    console.log(`  - ${t.teacherName} → "${t.subjectName}" (${t.classroomId || "IDなし"})`);
-  });
-
-  // 3. 履修登録マスタのヘッダー確認
-  console.log(`\n履修登録マスタ ヘッダー（3列目以降）:`);
-  const headers = enrollmentData[0];
-  for (let i = 2; i < headers.length; i++) {
-    console.log(`  列${i}: "${headers[i]}"`);
-  }
-
-  // 4. 教員マスタのヘッダー確認
-  console.log(`\n教員マスタ ヘッダー（4列目以降）:`);
-  const teacherHeaders = teacherData[0];
-  for (let i = 3; i < teacherHeaders.length; i++) {
-    console.log(`  列${i}: "${teacherHeaders[i]}"`);
-  }
-}
-
-/**
- * API詳細診断: 1人の生徒を追加してエラー詳細を確認
- */
-function diagnoseApiPermission() {
-  const courseId = "823999925372";  // テストクラスID
-  const testStudentEmail = "tlu-test01@shs.kyoto-art.ac.jp";  // テスト生徒
-
-  console.log("=".repeat(60));
-  console.log("Classroom API 詳細診断");
-  console.log("=".repeat(60));
-
-  try {
-    // 1. クラス情報を取得
-    const course = Classroom.Courses.get(courseId);
-    console.log("クラス名:", course.name);
-    console.log("クラス状態:", course.courseState);
-    console.log("オーナーID:", course.ownerId);
-
-    // 2. 現在のユーザー情報
-    const currentUser = Classroom.UserProfiles.get('me');
-    console.log("\n実行者:", currentUser.emailAddress);
-    console.log("実行者ID:", currentUser.id);
-    console.log("実行者はオーナー:", course.ownerId === currentUser.id ? "はい" : "いいえ");
-
-    // 3. 既存の生徒を確認
-    console.log("\n" + "=".repeat(60));
-    console.log("既存の生徒リスト");
-    console.log("=".repeat(60));
-    const existingStudents = Classroom.Courses.Students.list(courseId);
-    if (existingStudents.students && existingStudents.students.length > 0) {
-      existingStudents.students.forEach(s => {
-        console.log(`  - ${s.profile.name.fullName} (${s.profile.emailAddress})`);
-      });
-    } else {
-      console.log("  （生徒なし）");
-    }
-
-    // 4. テスト: 生徒を追加してみる
-    console.log("\n" + "=".repeat(60));
-    console.log("生徒追加テスト");
-    console.log("=".repeat(60));
-    console.log("追加対象:", testStudentEmail);
-
-    try {
-      const student = {
-        userId: testStudentEmail
-      };
-      const result = Classroom.Courses.Students.create(student, courseId);
-      console.log("✅ 成功！生徒を追加できました");
-      console.log("追加された生徒:", result.profile.name.fullName);
-    } catch (error) {
-      console.error("❌ 失敗！エラー詳細:");
-      console.error("エラーメッセージ:", error.message);
-      console.error("エラー詳細:", JSON.stringify(error, null, 2));
-
-      // 考えられる原因を出力
-      console.log("\n考えられる原因:");
-      if (error.message.includes("does not have permission")) {
-        console.log("1. Google Workspace管理コンソールでAPIアクセスが制限されている");
-        console.log("2. ドメイン間での生徒追加がブロックされている");
-        console.log("3. サービスアカウントとドメイン全体の委任が必要");
-      }
-    }
-
-  } catch (error) {
-    console.error("診断中にエラーが発生:", error);
-  }
-}
