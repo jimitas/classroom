@@ -200,8 +200,7 @@ function testPhase1() {
   console.log("");
 
   // DRY_RUNモードを一時的に強制
-  const originalMode = isDryRunMode();
-  CONFIG.SETTINGS.DRY_RUN_MODE = true;
+  setForceDryRunMode(true);
 
   try {
     const result = runPhase1Archive();
@@ -209,8 +208,8 @@ function testPhase1() {
     console.log("✅ Phase 1テスト完了:", result);
     SpreadsheetApp.getActiveSpreadsheet().toast('Phase 1テスト完了（DRY-RUN）', '成功', 3);
   } finally {
-    // 元の設定に戻す
-    CONFIG.SETTINGS.DRY_RUN_MODE = originalMode;
+    // 強制設定を解除
+    setForceDryRunMode(false);
   }
 }
 
@@ -225,8 +224,7 @@ function testPhase2() {
   console.log("   このテストは実際のAPI呼び出しを行いません。");
   console.log("");
 
-  const originalMode = isDryRunMode();
-  CONFIG.SETTINGS.DRY_RUN_MODE = true;
+  setForceDryRunMode(true);
 
   try {
     const result = runPhase2CreateClasses();
@@ -234,7 +232,7 @@ function testPhase2() {
     console.log("✅ Phase 2テスト完了:", result);
     SpreadsheetApp.getActiveSpreadsheet().toast('Phase 2テスト完了（DRY-RUN）', '成功', 3);
   } finally {
-    CONFIG.SETTINGS.DRY_RUN_MODE = originalMode;
+    setForceDryRunMode(false);
   }
 }
 
@@ -249,8 +247,7 @@ function testPhase3() {
   console.log("   このテストは実際のAPI呼び出しを行いません。");
   console.log("");
 
-  const originalMode = isDryRunMode();
-  CONFIG.SETTINGS.DRY_RUN_MODE = true;
+  setForceDryRunMode(true);
 
   try {
     const result = runPhase3CreateTopics();
@@ -258,7 +255,7 @@ function testPhase3() {
     console.log("✅ Phase 3テスト完了:", result);
     SpreadsheetApp.getActiveSpreadsheet().toast('Phase 3テスト完了（DRY-RUN）', '成功', 3);
   } finally {
-    CONFIG.SETTINGS.DRY_RUN_MODE = originalMode;
+    setForceDryRunMode(false);
   }
 }
 
@@ -273,8 +270,7 @@ function testPhase4() {
   console.log("   このテストは実際のAPI呼び出しを行いません。");
   console.log("");
 
-  const originalMode = isDryRunMode();
-  CONFIG.SETTINGS.DRY_RUN_MODE = true;
+  setForceDryRunMode(true);
 
   try {
     const result = runPhase4RegisterMembers();
@@ -282,7 +278,7 @@ function testPhase4() {
     console.log("✅ Phase 4テスト完了:", result);
     SpreadsheetApp.getActiveSpreadsheet().toast('Phase 4テスト完了（DRY-RUN）', '成功', 3);
   } finally {
-    CONFIG.SETTINGS.DRY_RUN_MODE = originalMode;
+    setForceDryRunMode(false);
   }
 }
 

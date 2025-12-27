@@ -101,8 +101,30 @@ function getSystemSetting(settingName) {
  * @returns {boolean} DRY_RUN_MODEの場合true
  */
 function isDryRunMode() {
+  // テスト実行時の強制DRY_RUNモードを確認
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const forceOverride = scriptProperties.getProperty('FORCE_DRY_RUN_MODE');
+
+  if (forceOverride === 'true') {
+    return true;
+  }
+
+  // 通常のスプレッドシート設定を確認
   const value = getSystemSetting("DRY_RUN_MODE");
   return value === "TRUE" || value === true;
+}
+
+/**
+ * DRY_RUNモードを一時的に強制設定（テスト用）
+ * @param {boolean} force - trueで強制、falseで解除
+ */
+function setForceDryRunMode(force) {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  if (force) {
+    scriptProperties.setProperty('FORCE_DRY_RUN_MODE', 'true');
+  } else {
+    scriptProperties.deleteProperty('FORCE_DRY_RUN_MODE');
+  }
 }
 
 /**
