@@ -921,6 +921,118 @@ Google Classroom API のレート制限:
 | `3085182` | 2025-12-27 | Update DEVELOPMENT.md with Phase 2 implementation details |
 | `f3e27eb` | 2025-12-27 | Implement Phase 3: Topic creation for classes |
 | `492148e` | 2025-12-27 | Update DEVELOPMENT.md with Phase 3 test results |
+| `283843f` | 2025-12-27 | Add custom menu, usage guide, debug tools, and project reports |
+| `bf779ac` | 2025-12-27 | Separate test and production execution modes |
+| `2839f98` | 2025-12-27 | Fix test mode implementation using PropertiesService |
+| `df6cd78` | 2025-12-27 | Simplify menu structure with DRY_RUN mode toggle |
+| `04c88c1` | 2025-12-27 | Revert to original menu structure (test/production separation) |
+
+---
+
+## メニュー構造の変更履歴（2025年12月27日）
+
+### 問題の発生と解決
+
+#### 試行1: テスト/本番メニューの分離実装
+**目的**: テスト実行時にスプレッドシート設定に関わらず強制的にDRY_RUNモードで実行
+
+**実装内容**:
+- テスト関数（`testPhase1-4()`）で`setForceDryRunMode(true)`を使用
+- PropertiesServiceで一時的にDRY_RUNモードを強制
+- `isDryRunMode()`でPropertiesServiceを優先チェック
+
+**結果**: ✅ 成功（コミット: `2839f98`）
+
+---
+
+#### 試行2: メニュー統合とモード切り替えボタンの追加
+**目的**: テスト/本番メニューを統合し、メニューからモード切り替えを可能にする
+
+**実装内容**:
+- `onOpen()`内で`isDryRunMode()`を呼び出して現在のモードを表示
+- メニューに「現在: 🧪 テストモード / ▶️ 本番モード」を表示
+- モード切り替えボタン（`toggleDryRunMode()`）を追加
+
+**問題発生**: ❌ メニューが自動表示されない
+- 手動で`onOpen()`を実行するとメニューが表示される
+- スプレッドシートをリロードしてもメニューが表示されない
+
+**原因の特定**:
+1. `onOpen()`は**シンプルトリガー**として自動実行される
+2. シンプルトリガーには認証が必要な操作に制限がある
+3. `isDryRunMode()` → `getSystemSetting()` → `SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID)`
+4. シンプルトリガーでは`openById()`が実行できない（認証エラー）
+5. 結果として`onOpen()`の実行が失敗し、メニューが表示されない
+
+**試行した対策**:
+- インストール可能なトリガーの設定を試みる
+- `setup_trigger.gs`を作成して`ScriptApp.getProjectTriggers()`を使用
+- OAuth スコープ`https://www.googleapis.com/auth/script.scriptapp`を追加
+- しかし権限エラーが発生
+
+**最終的な解決策**: 元のメニュー構造に戻す（コミット: `04c88c1`）
+- `onOpen()`内で`isDryRunMode()`を呼び出さない
+- テスト実行/本番実行のサブメニュー構造を維持
+- `showCurrentMode()`と`toggleDryRunMode()`関数を削除
+- `setup_trigger.gs`を削除
+- OAuth スコープを元に戻す
+
+**結果**: ✅ メニューが正常に自動表示されるようになった
+
+---
+
+### 学んだこと
+
+#### シンプルトリガーの制限
+Google Apps Scriptの**シンプルトリガー**（`onOpen`, `onEdit`等）には以下の制限があります：
+
+1. **認証が必要なサービスへのアクセス不可**
+   - 外部APIへのアクセス
+   - `SpreadsheetApp.openById()`（別のスプレッドシートへのアクセス）
+   - PropertiesServiceは使用可能
+
+2. **実行時間の制限**
+   - 最大30秒
+
+3. **スクリプトプロパティの利用**
+   - `PropertiesService.getScriptProperties()`は使用可能
+   - `PropertiesService.getUserProperties()`は使用可能
+
+#### 解決策の選択肢
+1. **シンプルトリガー内で認証が必要な操作を行わない**（今回採用）
+   - メニュー構造をシンプルに保つ
+   - 設定値の読み取りは実行時に行う
+
+2. **インストール可能なトリガーを使用する**
+   - ユーザーが手動でトリガーを設定する必要がある
+   - より高度な権限が必要
+
+3. **静的なメニューを表示し、実行時に設定を確認**
+   - メニューに状態を表示しない
+   - 各関数実行時にDRY_RUNモードをチェック
+
+#### 現在のメニュー構造
+```
+📚 Classroom自動化
+├── 🧪 テスト実行（DRY-RUN）
+│   ├── Phase 1: アーカイブテスト
+│   ├── Phase 2: クラス作成テスト
+│   ├── Phase 3: トピック作成テスト
+│   └── Phase 4: メンバー招待テスト
+├── ▶️ 本番実行
+│   ├── Phase 1: 旧年度クラスをアーカイブ
+│   ├── Phase 2: 新年度クラスを作成
+│   ├── Phase 3: トピックを作成
+│   └── Phase 4: 生徒・教員を招待
+└── 🔧 ユーティリティ
+    ├── Classroomからクラスマスタを同期
+    └── 使い方ガイドを更新
+```
+
+**特徴**:
+- テスト実行: PropertiesServiceで強制的にDRY_RUNモード
+- 本番実行: スプレッドシート「システム設定 」のDRY_RUN_MODE設定に従う
+- シンプルトリガーで正常に動作
 
 ---
 
