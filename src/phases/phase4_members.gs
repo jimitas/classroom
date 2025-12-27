@@ -208,87 +208,79 @@ function registerClassMembers(classId, subjectName, students, teachers, accountM
   let teacherCount = 0;
   const errors = [];
 
-  if (dryRunMode) {
-    // DRY_RUNモード: ログのみ
-    console.log(`[DRY-RUN] ${subjectName}:`);
-    console.log(`  生徒: ${students.length}名, 教員: ${teachers.length}名`);
-
-    logToProcessLog({
-      subjectName: subjectName,
-      classroomId: classId,
-      result: "成功（DRY-RUN）",
-      message: `生徒${students.length}名、教員${teachers.length}名を登録予定`,
-      executor: "Auto System (DRY-RUN)"
-    });
-
-    return { skipped: false, studentCount: students.length, teacherCount: teachers.length };
-  }
-
-  // 実際の登録処理
-  // 生徒を登録
+  // 生徒のバリデーション
   students.forEach(student => {
-    const account = accountMap[student.studentId];
-
-    if (!account) {
-      errors.push(`生徒「${student.studentName}」(${student.studentId}): アカウント情報なし`);
+    const validationError = validateStudentAccount(student, accountMap);
+    if (validationError) {
+      errors.push(validationError);
       return;
     }
 
-    if (account.isActive === false || account.isActive === "FALSE") {
-      errors.push(`生徒「${student.studentName}」(${student.studentId}): アカウント無効`);
-      return;
-    }
+    if (!dryRunMode) {
+      try {
+        addStudentToClass(classId, accountMap[student.studentId].email);
+        studentCount++;
+        debugLog(`生徒登録成功: ${student.studentName} → ${subjectName}`);
 
-    if (!account.email) {
-      errors.push(`生徒「${student.studentName}」(${student.studentId}): メールアドレスなし`);
-      return;
-    }
-
-    try {
-      addStudentToClass(classId, account.email);
+        // API間隔
+        Utilities.sleep(CONFIG.API_SETTINGS.REQUEST_INTERVAL_MS);
+      } catch (error) {
+        errors.push(`生徒「${student.studentName}」: ${error.message}`);
+      }
+    } else {
       studentCount++;
-      debugLog(`生徒登録成功: ${student.studentName} → ${subjectName}`);
-
-      // API間隔
-      Utilities.sleep(CONFIG.API_SETTINGS.REQUEST_INTERVAL_MS);
-    } catch (error) {
-      errors.push(`生徒「${student.studentName}」: ${error.message}`);
     }
   });
 
-  // 教員を登録
+  // 教員のバリデーション
   teachers.forEach(teacher => {
-    if (!teacher.teacherEmail) {
-      errors.push(`教員「${teacher.teacherName}」: メールアドレスなし`);
+    const validationError = validateTeacherAccount(teacher);
+    if (validationError) {
+      errors.push(validationError);
       return;
     }
 
-    try {
-      addTeacherToClass(classId, teacher.teacherEmail);
-      teacherCount++;
-      debugLog(`教員登録成功: ${teacher.teacherName} → ${subjectName}`);
+    if (!dryRunMode) {
+      try {
+        addTeacherToClass(classId, teacher.teacherEmail);
+        teacherCount++;
+        debugLog(`教員登録成功: ${teacher.teacherName} → ${subjectName}`);
 
-      // API間隔
-      Utilities.sleep(CONFIG.API_SETTINGS.REQUEST_INTERVAL_MS);
-    } catch (error) {
-      errors.push(`教員「${teacher.teacherName}」: ${error.message}`);
+        // API間隔
+        Utilities.sleep(CONFIG.API_SETTINGS.REQUEST_INTERVAL_MS);
+      } catch (error) {
+        errors.push(`教員「${teacher.teacherName}」: ${error.message}`);
+      }
+    } else {
+      teacherCount++;
     }
   });
 
   // ログ記録
+  const modeLabel = dryRunMode ? "（DRY-RUN）" : "";
+  const actionLabel = dryRunMode ? "登録予定" : "登録しました";
+
   const message = errors.length > 0
-    ? `生徒${studentCount}名、教員${teacherCount}名を登録。エラー${errors.length}件: ${errors.join('; ')}`
-    : `生徒${studentCount}名、教員${teacherCount}名を登録しました`;
+    ? `生徒${studentCount}名、教員${teacherCount}名を${actionLabel}。エラー${errors.length}件: ${errors.join('; ')}`
+    : `生徒${studentCount}名、教員${teacherCount}名を${actionLabel}`;
+
+  const result = errors.length > 0
+    ? `一部失敗${modeLabel}`
+    : `成功${modeLabel}`;
 
   logToProcessLog({
     subjectName: subjectName,
     classroomId: classId,
-    result: errors.length > 0 ? "一部失敗" : "成功",
+    result: result,
     message: message,
-    executor: "Auto System"
+    executor: dryRunMode ? "Auto System (DRY-RUN)" : "Auto System"
   });
 
-  console.log(`✓ ${subjectName}: 生徒${studentCount}名, 教員${teacherCount}名登録`);
+  if (dryRunMode) {
+    console.log(`[DRY-RUN] ${subjectName}: 生徒${studentCount}名, 教員${teacherCount}名 (エラー: ${errors.length}件)`);
+  } else {
+    console.log(`✓ ${subjectName}: 生徒${studentCount}名, 教員${teacherCount}名登録`);
+  }
 
   return { skipped: false, studentCount, teacherCount };
 }
@@ -319,4 +311,54 @@ function addTeacherToClass(courseId, teacherEmail) {
     };
     return Classroom.Courses.Teachers.create(teacher, courseId);
   });
+}
+
+/**
+ * 生徒アカウントのバリデーション
+ * @param {Object} student - 生徒情報
+ * @param {Object} accountMap - アカウントマッピング
+ * @returns {string|null} エラーメッセージ、または null（正常）
+ */
+function validateStudentAccount(student, accountMap) {
+  // アカウント存在チェック
+  const account = accountMap[student.studentId];
+  if (!account) {
+    return `生徒「${student.studentName}」(${student.studentId}): アカウント情報なし`;
+  }
+
+  // アカウント有効性チェック
+  if (account.isActive === false || account.isActive === "FALSE") {
+    return `生徒「${student.studentName}」(${student.studentId}): アカウント無効`;
+  }
+
+  // メールアドレス存在チェック
+  if (!account.email) {
+    return `生徒「${student.studentName}」(${student.studentId}): メールアドレスなし`;
+  }
+
+  // ドメインチェック
+  if (!account.email.endsWith(CONFIG.DOMAIN_SETTINGS.STUDENT_DOMAIN)) {
+    return `生徒「${student.studentName}」(${student.studentId}): 無効なドメイン (期待: ${CONFIG.DOMAIN_SETTINGS.STUDENT_DOMAIN}, 実際: ${account.email})`;
+  }
+
+  return null; // バリデーション成功
+}
+
+/**
+ * 教員アカウントのバリデーション
+ * @param {Object} teacher - 教員情報
+ * @returns {string|null} エラーメッセージ、または null（正常）
+ */
+function validateTeacherAccount(teacher) {
+  // メールアドレス存在チェック
+  if (!teacher.teacherEmail) {
+    return `教員「${teacher.teacherName}」: メールアドレスなし`;
+  }
+
+  // ドメインチェック
+  if (!teacher.teacherEmail.endsWith(CONFIG.DOMAIN_SETTINGS.TEACHER_DOMAIN)) {
+    return `教員「${teacher.teacherName}」: 無効なドメイン (期待: ${CONFIG.DOMAIN_SETTINGS.TEACHER_DOMAIN}, 実際: ${teacher.teacherEmail})`;
+  }
+
+  return null; // バリデーション成功
 }

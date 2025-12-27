@@ -159,6 +159,8 @@ TOPIC_STRUCTURE: [
 - `runPhase4RegisterMembers()` - Phase 4メイン処理
 - `registerMembersByClass(studentEnrollments, teacherAssignments, accountMap, dryRunMode)` - クラスごとにグループ化して登録
 - `registerClassMembers(classId, subjectName, students, teachers, accountMap, dryRunMode)` - 個別クラスのメンバー登録
+- `validateStudentAccount(student, accountMap)` - 生徒アカウントバリデーション
+- `validateTeacherAccount(teacher)` - 教員アカウントバリデーション
 - `addStudentToClass(courseId, studentEmail)` - Classroom API呼び出し（生徒）
 - `addTeacherToClass(courseId, teacherEmail)` - Classroom API呼び出し（教員）
 - `transformEnrollmentDataToVertical(enrollmentData, classMasterMap)` - 履修登録マスタ変換
@@ -179,8 +181,13 @@ TOPIC_STRUCTURE: [
 8. ログに記録
 
 #### バリデーション機能
+- **DRY_RUNモードでもバリデーションを実行**（事前エラー検出）
+- アカウントマッピング存在チェック
 - アカウント有効性チェック（isActive=FALSE はスキップ）
 - メールアドレス存在チェック（空白はスキップ）
+- **ドメインチェック**:
+  - 生徒: @shs.kyoto-art.ac.jp
+  - 教員: @office.kyoto-art.ac.jp
 - 学籍番号の存在チェック
 - クラスIDの存在チェック
 
@@ -616,6 +623,8 @@ const classesToCreate = allClasses.filter(c => {
 | `runPhase4RegisterMembers()` | Phase 4メイン処理 |
 | `registerMembersByClass(studentEnrollments, teacherAssignments, accountMap, dryRunMode)` | クラスごとにグループ化して登録 |
 | `registerClassMembers(classId, subjectName, students, teachers, accountMap, dryRunMode)` | 個別クラスのメンバー登録 |
+| `validateStudentAccount(student, accountMap)` | 生徒アカウントバリデーション（ドメインチェック含む） |
+| `validateTeacherAccount(teacher)` | 教員アカウントバリデーション（ドメインチェック含む） |
 | `addStudentToClass(courseId, studentEmail)` | 生徒をクラスに追加（Classroom API） |
 | `addTeacherToClass(courseId, teacherEmail)` | 教員をクラスに追加（Classroom API） |
 

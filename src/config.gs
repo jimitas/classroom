@@ -38,6 +38,12 @@ const CONFIG = {
     "お知らせ"
   ],
 
+  // ドメイン設定
+  DOMAIN_SETTINGS: {
+    TEACHER_DOMAIN: "@office.kyoto-art.ac.jp",  // 教員ドメイン
+    STUDENT_DOMAIN: "@shs.kyoto-art.ac.jp"      // 生徒ドメイン
+  },
+
   // エラーコード
   ERROR_CODES: {
     ERR_001: "APIトークン期限切れ",
