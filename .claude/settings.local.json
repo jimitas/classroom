@@ -11,7 +11,8 @@
       "Bash(clasp clone:*)",
       "Bash(mkdir:*)",
       "Bash(clasp push:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(grep:*)"
     ]
   }
 }

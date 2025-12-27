@@ -20,6 +20,11 @@ function runPhase4RegisterMembers() {
     const dryRunMode = isDryRunMode();
     if (dryRunMode) {
       console.log("⚠️ DRY_RUN_MODE: 実際のAPI呼び出しは行いません");
+      console.log("⚠️ 本番実行するには、「システム設定 」シートでDRY_RUN_MODEをFALSEに設定してください");
+      SpreadsheetApp.getActiveSpreadsheet().toast('DRY_RUNモードで実行中です', '警告', 5);
+    } else {
+      console.log("✅ 本番モード: 実際にAPI呼び出しを行います");
+      SpreadsheetApp.getActiveSpreadsheet().toast('本番モードで実行中...', '実行中', 3);
     }
 
     console.log("=".repeat(60));
