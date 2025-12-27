@@ -444,6 +444,51 @@ const classesToCreate = allClasses.filter(c => {
 
 ---
 
+### Phase 3トピック作成機能
+
+**実装日**: 2025年12月27日
+**テスト日**: 2025年12月27日
+
+#### テスト環境
+- 対象クラス: クラス状態が "Active" かつ H列（トピック作成）が TRUE のクラス
+- 実行者: スクリプトを実行したアカウント
+
+#### テスト手順
+1. クラスマスタのH列「トピック作成」にチェックボックスを追加
+2. テスト対象クラスにチェックを入れる（TRUE）
+3. `DRY_RUN_MODE = TRUE` に設定
+4. `testPhase3()` - DRY-RUN実行 ✅
+5. ログで作成予定のトピックを確認
+6. `DRY_RUN_MODE = FALSE` に変更
+7. `runPhase3CreateTopics()` - 本番実行 ✅
+
+#### テスト結果
+**DRY-RUNモード**:
+- ✅ トピック構造の表示成功: "その他, テスト, 課題, 授業資料, お知らせ"
+- ✅ 対象クラスの抽出成功
+- ✅ トピック作成フラグ=FALSE のクラスがスキップされる
+- ✅ 登録処理ログに「成功（DRY-RUN）」として記録
+
+**本番実行**:
+- ✅ トピック5件の作成成功
+- ✅ 既存トピックのチェック機能動作
+- ✅ 重複トピックの作成防止成功
+- ✅ トピックが正しい順序で表示される（お知らせ→授業資料→課題→テスト→その他）
+- ✅ 登録処理ログに成功記録
+- ✅ エラーなし
+
+#### 確認された動作
+1. クラス状態="Active"、トピック作成="TRUE" → **トピック作成される**
+2. クラス状態="Active"、トピック作成="FALSE" → **スキップされる**
+3. 既に全トピックが存在するクラス → **スキップされる**
+4. 一部トピックのみ存在するクラス → **未作成のトピックのみ作成される**
+
+#### トピック表示順の確認
+作成順（API実行順）: その他 → テスト → 課題 → 授業資料 → お知らせ
+**表示順（Classroom上）**: お知らせ → 授業資料 → 課題 → テスト → その他 ✅
+
+---
+
 ## 主要な関数一覧
 
 ### メインエントリーポイント（`src/main.gs`）
@@ -676,6 +721,8 @@ Phase 2は実装済みです。詳細は上部の「Phase 2: 新年度クラス�
 | `a45add2` | 2025-12-27 | Fix Phase 2: Remove ownerId requirement for class creation |
 | `bdeb978` | 2025-12-27 | Fix Phase 2: Set ownerId to 'me' for course creation |
 | `95bcab1` | 2025-12-27 | Add duplicate prevention for Phase 2 class creation |
+| `3085182` | 2025-12-27 | Update DEVELOPMENT.md with Phase 2 implementation details |
+| `f3e27eb` | 2025-12-27 | Implement Phase 3: Topic creation for classes |
 
 ---
 
