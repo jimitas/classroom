@@ -259,16 +259,71 @@ const course = {
 };
 ```
 
-**修正後のコード**:
+**修正後のコード（第1回修正）**:
 ```javascript
 const course = {
   name: subjectName,
   courseState: "ACTIVE"
-  // ownerIdを指定しない → 実行者が自動的にオーナーになる
+  // ownerIdを削除
 };
 ```
 
-**実装コミット**: 修正中
+**実装コミット**: `a45add2`
+
+**結果**: エラー継続 - "course.ownerId: You must specify an ownerId"
+
+**追加修正（第2回）**:
+- Classroom APIでは `ownerId` パラメータが必須
+- 省略することはできない
+- `ownerId: 'me'` を指定（'me' = 認証されたユーザー）
+
+**最終修正コード**:
+```javascript
+const course = {
+  name: subjectName,
+  ownerId: 'me',  // 'me' = スクリプト実行者
+  courseState: "ACTIVE"
+};
+```
+
+**最終コミット**: `bdeb978`
+
+**結果**: ✅ 成功
+
+---
+
+### 問題5: Phase 2での重複クラス作成
+
+**症状**:
+- 作成済みクラスの状態を "Active" → "New" に変更して再実行すると、同じ名前のクラスが重複して作成される
+
+**原因**:
+- Phase 2の作成条件が「状態=New」と「科目有効性=TRUE」のみ
+- クラスIDの有無をチェックしていない
+
+**解決策**:
+- クラスID（B列）が空のクラスのみ作成対象とする
+- 既にクラスIDが存在する場合はスキップしてログに表示
+
+**修正前の条件**:
+```javascript
+const classesToCreate = allClasses.filter(c =>
+  c.isActive === true || c.isActive === "TRUE"
+);
+```
+
+**修正後の条件**:
+```javascript
+const classesToCreate = allClasses.filter(c => {
+  const isActive = c.isActive === true || c.isActive === "TRUE";
+  const hasNoClassroomId = !c.classroomId || c.classroomId === "";
+  return isActive && hasNoClassroomId;
+});
+```
+
+**実装コミット**: `95bcab1`
+
+**結果**: ✅ 重複作成を防止、既存クラスはスキップされる
 
 ---
 
@@ -296,6 +351,47 @@ const course = {
 - ✅ クラスがアーカイブ状態に変更
 - ✅ 登録処理ログに成功記録
 - ✅ エラーなし
+
+---
+
+### Phase 2クラス作成機能
+
+**実装日**: 2025年12月27日
+
+#### テスト環境
+- テストクラス: "テスト_クラス追加"
+- 実行者: スクリプトを実行したアカウント
+
+#### 実装・修正の経緯
+
+**1回目（失敗）**: 別ユーザーをownerIdに指定
+- エラー: `@UserCannotOwnCourse` - ドメイン管理者権限が必要
+- 対応: `ownerId`パラメータを削除（コミット: `a45add2`）
+
+**2回目（失敗）**: ownerIdを省略
+- エラー: `course.ownerId: You must specify an ownerId`
+- 対応: `ownerId: 'me'` を設定（コミット: `bdeb978`）
+
+**3回目（成功）**: ownerId='me'で作成成功
+- ✅ クラス作成成功
+- ✅ スクリプト実行者がオーナーになる
+- ✅ クラスマスタにIDと状態が記録される
+
+**4回目（重複作成の発見と修正）**:
+- 問題: 状態を"New"に戻すと同名クラスが再作成される
+- 対応: クラスID有無のチェックを追加（コミット: `95bcab1`）
+- ✅ 既にIDがあるクラスはスキップされる
+
+#### 最終テスト結果
+- ✅ 新規クラスの作成成功
+- ✅ 重複作成の防止成功
+- ✅ クラスマスタの自動更新成功
+- ✅ ログ記録成功
+
+#### 確認された動作
+1. クラス状態="New"、科目有効性="TRUE"、クラスID=空 → **作成される**
+2. クラス状態="New"、科目有効性="TRUE"、クラスID=有 → **スキップされる**
+3. クラス状態="New"、科目有効性="FALSE" → **スキップされる**
 
 ---
 
@@ -516,10 +612,16 @@ Phase 2は実装済みです。詳細は上部の「Phase 2: 新年度クラス�
 | `6458427` | 2025-12-26 | Fix: Remove id field from courses.update request body |
 | `eab1849` | 2025-12-26 | Add comprehensive development log (DEVELOPMENT.md) |
 | `9a0a3d4` | 2025-12-26 | Add syncClassMasterFromClassroom() to sync Classroom state to spreadsheet |
+| `702d735` | 2025-12-26 | Update documentation: Add class master sync feature |
+| `fe618ed` | 2025-12-27 | Implement Phase 2: Create new classes with admin owner |
+| `a45add2` | 2025-12-27 | Fix Phase 2: Remove ownerId requirement for class creation |
+| `bdeb978` | 2025-12-27 | Fix Phase 2: Set ownerId to 'me' for course creation |
+| `95bcab1` | 2025-12-27 | Add duplicate prevention for Phase 2 class creation |
 
 ---
 
-**最終更新**: 2025年12月26日
+**最終更新**: 2025年12月27日
 **Phase 1実装完了**: ✅
+**Phase 2実装完了**: ✅
 **ユーティリティ機能実装完了**: ✅（クラスマスタ同期）
-**次のステップ**: Phase 2の実装
+**次のステップ**: Phase 3（トピックの作成）、Phase 4（生徒・教員の一括登録）
