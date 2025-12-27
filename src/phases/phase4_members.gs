@@ -220,7 +220,7 @@ function registerClassMembers(classId, subjectName, students, teachers, accountM
       try {
         addStudentToClass(classId, accountMap[student.studentId].email);
         studentCount++;
-        debugLog(`生徒登録成功: ${student.studentName} → ${subjectName}`);
+        debugLog(`生徒招待送信成功: ${student.studentName} → ${subjectName}`);
 
         // API間隔
         Utilities.sleep(CONFIG.API_SETTINGS.REQUEST_INTERVAL_MS);
@@ -244,7 +244,7 @@ function registerClassMembers(classId, subjectName, students, teachers, accountM
       try {
         addTeacherToClass(classId, teacher.teacherEmail);
         teacherCount++;
-        debugLog(`教員登録成功: ${teacher.teacherName} → ${subjectName}`);
+        debugLog(`教員招待送信成功: ${teacher.teacherName} → ${subjectName}`);
 
         // API間隔
         Utilities.sleep(CONFIG.API_SETTINGS.REQUEST_INTERVAL_MS);
@@ -258,11 +258,11 @@ function registerClassMembers(classId, subjectName, students, teachers, accountM
 
   // ログ記録
   const modeLabel = dryRunMode ? "（DRY-RUN）" : "";
-  const actionLabel = dryRunMode ? "登録予定" : "登録しました";
+  const actionLabel = dryRunMode ? "招待送信予定" : "に招待を送信しました";
 
   const message = errors.length > 0
-    ? `生徒${studentCount}名、教員${teacherCount}名を${actionLabel}。エラー${errors.length}件: ${errors.join('; ')}`
-    : `生徒${studentCount}名、教員${teacherCount}名を${actionLabel}`;
+    ? `生徒${studentCount}名、教員${teacherCount}名${actionLabel}。エラー${errors.length}件: ${errors.join('; ')}`
+    : `生徒${studentCount}名、教員${teacherCount}名${actionLabel}`;
 
   const result = errors.length > 0
     ? `一部失敗${modeLabel}`
@@ -277,39 +277,45 @@ function registerClassMembers(classId, subjectName, students, teachers, accountM
   });
 
   if (dryRunMode) {
-    console.log(`[DRY-RUN] ${subjectName}: 生徒${studentCount}名, 教員${teacherCount}名 (エラー: ${errors.length}件)`);
+    console.log(`[DRY-RUN] ${subjectName}: 生徒${studentCount}名, 教員${teacherCount}名に招待送信予定 (エラー: ${errors.length}件)`);
   } else {
-    console.log(`✓ ${subjectName}: 生徒${studentCount}名, 教員${teacherCount}名登録`);
+    console.log(`✓ ${subjectName}: 生徒${studentCount}名, 教員${teacherCount}名に招待送信`);
   }
 
   return { skipped: false, studentCount, teacherCount };
 }
 
 /**
- * 生徒をクラスに追加
+ * 生徒をクラスに招待（Invitations API使用）
  * @param {string} courseId - クラスID
  * @param {string} studentEmail - 生徒のメールアドレス
+ * @returns {Object} 招待結果
  */
 function addStudentToClass(courseId, studentEmail) {
   return executeWithRetry(() => {
-    const student = {
-      userId: studentEmail
+    const invitation = {
+      userId: studentEmail,
+      courseId: courseId,
+      role: "STUDENT"
     };
-    return Classroom.Courses.Students.create(student, courseId);
+    return Classroom.Invitations.create(invitation);
   });
 }
 
 /**
- * 教員をクラスに追加（共同教師として）
+ * 教員をクラスに招待（共同教師として、Invitations API使用）
  * @param {string} courseId - クラスID
  * @param {string} teacherEmail - 教員のメールアドレス
+ * @returns {Object} 招待結果
  */
 function addTeacherToClass(courseId, teacherEmail) {
   return executeWithRetry(() => {
-    const teacher = {
-      userId: teacherEmail
+    const invitation = {
+      userId: teacherEmail,
+      courseId: courseId,
+      role: "TEACHER"
     };
-    return Classroom.Courses.Teachers.create(teacher, courseId);
+    return Classroom.Invitations.create(invitation);
   });
 }
 
