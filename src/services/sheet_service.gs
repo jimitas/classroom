@@ -201,7 +201,7 @@ function getTeacherData() {
 /**
  * アカウントマッピングから学籍番号に対応するGoogleメールアドレスを取得
  * @param {string} studentId - 学籍番号
- * @returns {Object|null} {email, userId, isActive} または null
+ * @returns {Object|null} {name, email, userId, isActive} または null
  */
 function getStudentAccount(studentId) {
   const data = getSheetData(CONFIG.SHEET_NAMES.ACCOUNT_MAPPING);
@@ -212,9 +212,10 @@ function getStudentAccount(studentId) {
 
     if (row[0] === studentId) { // A: 内部ID（学籍番号）
       return {
-        email: row[1],       // B: Googleメールアドレス
-        userId: row[2],      // C: GoogleユーザーID
-        isActive: row[4]     // E: アカウント有効性
+        name: row[1],        // B: 氏名
+        email: row[2],       // C: Googleメールアドレス
+        userId: row[3],      // D: GoogleユーザーID
+        isActive: row[5]     // F: アカウント有効性
       };
     }
   }
@@ -250,12 +251,14 @@ function getAccountMappingMap() {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const studentId = row[0];    // A: 内部ID（学籍番号）
-    const email = row[1];         // B: Googleメールアドレス
-    const userId = row[2];        // C: GoogleユーザーID
-    const isActive = row[4];      // E: アカウント有効性
+    const name = row[1];          // B: 氏名
+    const email = row[2];         // C: Googleメールアドレス
+    const userId = row[3];        // D: GoogleユーザーID
+    const isActive = row[5];      // F: アカウント有効性
 
     if (studentId) {
       accountMap[studentId] = {
+        name: name,
         email: email,
         userId: userId,
         isActive: isActive

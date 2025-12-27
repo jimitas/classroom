@@ -326,6 +326,11 @@ function validateStudentAccount(student, accountMap) {
     return `生徒「${student.studentName}」(${student.studentId}): アカウント情報なし`;
   }
 
+  // 氏名整合性チェック
+  if (account.name && account.name !== student.studentName) {
+    return `生徒 氏名不一致: 履修「${student.studentName}」vs マッピング「${account.name}」(${student.studentId})`;
+  }
+
   // アカウント有効性チェック
   if (account.isActive === false || account.isActive === "FALSE") {
     return `生徒「${student.studentName}」(${student.studentId}): アカウント無効`;
