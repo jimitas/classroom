@@ -196,11 +196,13 @@ function runAllPhases() {
 }
 
 /**
- * Phase 1のみを実行（テスト用 - 強制DRY_RUNモード）
+ * テスト実行の共通処理
+ * @param {number} phaseNumber - フェーズ番号
+ * @param {Function} phaseFunction - 実行するフェーズ関数
  */
-function testPhase1() {
+function executePhaseTest(phaseNumber, phaseFunction) {
   console.log("=".repeat(60));
-  console.log("🧪 Phase 1 テスト実行（強制DRY_RUNモード）");
+  console.log(`🧪 Phase ${phaseNumber} テスト実行（強制DRY_RUNモード）`);
   console.log("=".repeat(60));
   console.log("⚠️ スプレッドシートのDRY_RUN_MODE設定に関わらず、");
   console.log("   このテストは実際のAPI呼び出しを行いません。");
@@ -210,10 +212,10 @@ function testPhase1() {
   setForceDryRunMode(true);
 
   try {
-    const result = runPhase1Archive();
+    const result = phaseFunction();
     console.log("");
-    console.log("✅ Phase 1テスト完了:", result);
-    SpreadsheetApp.getActiveSpreadsheet().toast('Phase 1テスト完了（DRY-RUN）', '成功', 3);
+    console.log(`✅ Phase ${phaseNumber}テスト完了:`, result);
+    SpreadsheetApp.getActiveSpreadsheet().toast(`Phase ${phaseNumber}テスト完了（DRY-RUN）`, '成功', 3);
   } finally {
     // 強制設定を解除
     setForceDryRunMode(false);
@@ -221,72 +223,31 @@ function testPhase1() {
 }
 
 /**
+ * Phase 1のみを実行（テスト用 - 強制DRY_RUNモード）
+ */
+function testPhase1() {
+  executePhaseTest(1, runPhase1Archive);
+}
+
+/**
  * Phase 2のみを実行（テスト用 - 強制DRY_RUNモード）
  */
 function testPhase2() {
-  console.log("=".repeat(60));
-  console.log("🧪 Phase 2 テスト実行（強制DRY_RUNモード）");
-  console.log("=".repeat(60));
-  console.log("⚠️ スプレッドシートのDRY_RUN_MODE設定に関わらず、");
-  console.log("   このテストは実際のAPI呼び出しを行いません。");
-  console.log("");
-
-  setForceDryRunMode(true);
-
-  try {
-    const result = runPhase2CreateClasses();
-    console.log("");
-    console.log("✅ Phase 2テスト完了:", result);
-    SpreadsheetApp.getActiveSpreadsheet().toast('Phase 2テスト完了（DRY-RUN）', '成功', 3);
-  } finally {
-    setForceDryRunMode(false);
-  }
+  executePhaseTest(2, runPhase2CreateClasses);
 }
 
 /**
  * Phase 3のみを実行（テスト用 - 強制DRY_RUNモード）
  */
 function testPhase3() {
-  console.log("=".repeat(60));
-  console.log("🧪 Phase 3 テスト実行（強制DRY_RUNモード）");
-  console.log("=".repeat(60));
-  console.log("⚠️ スプレッドシートのDRY_RUN_MODE設定に関わらず、");
-  console.log("   このテストは実際のAPI呼び出しを行いません。");
-  console.log("");
-
-  setForceDryRunMode(true);
-
-  try {
-    const result = runPhase3CreateTopics();
-    console.log("");
-    console.log("✅ Phase 3テスト完了:", result);
-    SpreadsheetApp.getActiveSpreadsheet().toast('Phase 3テスト完了（DRY-RUN）', '成功', 3);
-  } finally {
-    setForceDryRunMode(false);
-  }
+  executePhaseTest(3, runPhase3CreateTopics);
 }
 
 /**
  * Phase 4のみを実行（テスト用 - 強制DRY_RUNモード）
  */
 function testPhase4() {
-  console.log("=".repeat(60));
-  console.log("🧪 Phase 4 テスト実行（強制DRY_RUNモード）");
-  console.log("=".repeat(60));
-  console.log("⚠️ スプレッドシートのDRY_RUN_MODE設定に関わらず、");
-  console.log("   このテストは実際のAPI呼び出しを行いません。");
-  console.log("");
-
-  setForceDryRunMode(true);
-
-  try {
-    const result = runPhase4RegisterMembers();
-    console.log("");
-    console.log("✅ Phase 4テスト完了:", result);
-    SpreadsheetApp.getActiveSpreadsheet().toast('Phase 4テスト完了（DRY-RUN）', '成功', 3);
-  } finally {
-    setForceDryRunMode(false);
-  }
+  executePhaseTest(4, runPhase4RegisterMembers);
 }
 
 /**
