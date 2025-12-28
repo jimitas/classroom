@@ -372,3 +372,189 @@ function validateTeacherAccount(teacher) {
 
   return null; // バリデーション成功
 }
+
+/**
+ * 保留中の招待を再送信
+ * @returns {Object} 実行結果 {successCount, errorCount, resendCount}
+ */
+function resendPendingInvitations() {
+  console.log("=".repeat(60));
+  console.log("保留中招待の再送処理");
+  console.log("=".repeat(60));
+
+  let successCount = 0;
+  let errorCount = 0;
+  let resendCount = 0;
+
+  try {
+    // DRY_RUN_MODEを確認
+    const dryRunMode = isDryRunMode();
+    if (dryRunMode) {
+      console.log("⚠️ DRY_RUN_MODE: 実際の再送は行いません");
+      SpreadsheetApp.getActiveSpreadsheet().toast('DRY_RUNモードで実行中です', '警告', 5);
+    } else {
+      console.log("✅ 本番モード: 招待を再送信します");
+      SpreadsheetApp.getActiveSpreadsheet().toast('招待を再送信中...', '実行中', 3);
+    }
+
+    // Active状態のクラスを取得
+    const allClasses = getClassesByState(CONFIG.CLASS_STATE.ACTIVE);
+    const activeClasses = allClasses.filter(c => c.isActive === true || c.isActive === "TRUE");
+
+    if (activeClasses.length === 0) {
+      console.log("再送対象のクラスはありません");
+      return { successCount, errorCount, resendCount };
+    }
+
+    console.log(`対象クラス数: ${activeClasses.length}`);
+
+    // 各クラスの保留中招待を再送
+    for (const classInfo of activeClasses) {
+      try {
+        const result = resendClassInvitations(classInfo, dryRunMode);
+        resendCount += result.resendCount;
+
+        if (result.resendCount > 0) {
+          successCount++;
+        }
+
+        // API Rate Limit対策
+        if (!dryRunMode && result.resendCount > 0) {
+          Utilities.sleep(CONFIG.API_SETTINGS.REQUEST_INTERVAL_MS);
+        }
+      } catch (error) {
+        console.error(`再送エラー: ${classInfo.subjectName}`, error);
+        errorCount++;
+      }
+    }
+
+    console.log("\n" + "=".repeat(60));
+    console.log("再送処理完了");
+    console.log(`成功: ${successCount}クラス, エラー: ${errorCount}クラス, 再送数: ${resendCount}件`);
+    console.log("=".repeat(60));
+
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      `招待再送完了: ${resendCount}件`,
+      '完了',
+      5
+    );
+
+  } catch (error) {
+    console.error("招待再送処理エラー:", error);
+    throw error;
+  }
+
+  return { successCount, errorCount, resendCount };
+}
+
+/**
+ * 個別クラスの保留中招待を再送
+ * @param {Object} classInfo - クラス情報
+ * @param {boolean} dryRunMode - DRY_RUNモードかどうか
+ * @returns {Object} 実行結果 {resendCount}
+ */
+function resendClassInvitations(classInfo, dryRunMode) {
+  const courseId = classInfo.classroomId;
+  const subjectName = classInfo.subjectName;
+  let resendCount = 0;
+
+  debugLog(`招待再送開始: ${subjectName} (${courseId})`);
+
+  try {
+    // 保留中の招待を取得
+    const pendingInvitations = getPendingInvitations(courseId);
+
+    if (pendingInvitations.length === 0) {
+      console.log(`✓ ${subjectName}: 再送対象の招待なし`);
+      return { resendCount: 0 };
+    }
+
+    console.log(`⚠️ ${subjectName}: 保留中の招待 ${pendingInvitations.length}件を再送します`);
+
+    // 各招待を再送（既存の招待を削除して新規作成）
+    for (const invitation of pendingInvitations) {
+      try {
+        if (dryRunMode) {
+          console.log(`[DRY-RUN] 再送予定: ${invitation.role} - ${invitation.userId}`);
+          resendCount++;
+        } else {
+          // 既存の招待を削除
+          deleteInvitation(invitation.id);
+          debugLog(`招待削除: ${invitation.id}`);
+
+          // 新しい招待を作成
+          const newInvitation = {
+            userId: invitation.userId,
+            courseId: courseId,
+            role: invitation.role
+          };
+          Classroom.Invitations.create(newInvitation);
+          debugLog(`招待再送成功: ${invitation.role} - ${invitation.userId}`);
+
+          resendCount++;
+
+          // API Rate Limit対策
+          Utilities.sleep(CONFIG.API_SETTINGS.REQUEST_INTERVAL_MS);
+        }
+      } catch (error) {
+        console.error(`招待再送エラー: ${invitation.userId}`, error);
+      }
+    }
+
+    // ログ記録
+    const modeLabel = dryRunMode ? "（DRY-RUN）" : "";
+    logToProcessLog({
+      subjectName: subjectName,
+      classroomId: courseId,
+      result: `成功${modeLabel}`,
+      message: `招待${resendCount}件を再送しました`,
+      executor: dryRunMode ? "Auto System (DRY-RUN)" : "Auto System"
+    });
+
+    console.log(`✓ ${subjectName}: ${resendCount}件再送完了`);
+
+  } catch (error) {
+    console.error(`招待再送エラー: ${subjectName}`, error);
+
+    logToProcessLog({
+      subjectName: subjectName,
+      classroomId: courseId,
+      result: "失敗",
+      message: `招待再送エラー: ${error.message}`,
+      executor: "Auto System"
+    });
+
+    throw error;
+  }
+
+  return { resendCount };
+}
+
+/**
+ * 招待を削除
+ * @param {string} invitationId - 招待ID
+ */
+function deleteInvitation(invitationId) {
+  return executeWithRetry(() => {
+    return Classroom.Invitations.delete(invitationId);
+  });
+}
+
+/**
+ * 保留中の招待を取得（Phase 5と共通化のため）
+ * @param {string} courseId - クラスID
+ * @returns {Array<Object>} 保留中の招待の配列
+ */
+function getPendingInvitations(courseId) {
+  return executeWithRetry(() => {
+    try {
+      const response = Classroom.Invitations.list({ courseId: courseId });
+      return response.invitations || [];
+    } catch (error) {
+      if (error.message && error.message.includes("not found")) {
+        return [];
+      }
+      throw error;
+    }
+  });
+}

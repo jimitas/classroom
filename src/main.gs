@@ -20,11 +20,18 @@ function onOpen() {
       .addItem('Phase 1: 旧年度クラスをアーカイブ', 'runPhase1Archive')
       .addItem('Phase 2: 新年度クラスを作成', 'runPhase2CreateClasses')
       .addItem('Phase 3: トピックを作成', 'runPhase3CreateTopics')
-      .addItem('Phase 4: 生徒・教員を招待', 'runPhase4RegisterMembers'))
+      .addItem('Phase 4: 生徒・教員を招待', 'runPhase4RegisterMembers')
+      .addItem('Phase 5: 招待状況を確認', 'runPhase5CheckInvitationStatus')
+      .addSeparator()
+      .addItem('保留中の招待を再送信', 'resendPendingInvitations'))
     .addSeparator()
     .addSubMenu(ui.createMenu('🔧 ユーティリティ')
       .addItem('Classroomからクラスマスタを同期', 'syncClassMasterFromClassroom')
-      .addItem('使い方ガイドを更新', 'updateUsageGuideSheet'))
+      .addItem('使い方ガイドを更新', 'updateUsageGuideSheet')
+      .addSeparator()
+      .addItem('クラスマスタをバックアップ', 'backupClassMaster')
+      .addItem('バックアップ一覧を表示', 'listBackups')
+      .addItem('最新バックアップから復元', 'restoreFromLatestBackup'))
     .addToUi();
 }
 
