@@ -13,6 +13,7 @@ Google Classroomのクラス管理作業を自動化するシステム（Phase 1
 - ✅ **Phase 3: トピックの作成** - 実装済み
 - ✅ **Phase 4: 生徒・教員の一括登録** - 実装済み
 - ✅ **ユーティリティ: クラスマスタ同期機能** - 実装済み
+- ✅ **ユーティリティ: バックアップ・復元機能** - 実装済み
 
 ## プロジェクト構成
 
@@ -119,6 +120,11 @@ GASエディタで初めて実行する際、以下の権限が要求されま�
 |--------|------|
 | `syncClassMasterFromClassroom()` | Classroomの現在の状態をクラスマスタに同期 |
 | `getCourseIdFromEnrollmentCode(code)` | 招待コードからクラスIDを取得 |
+| `backupClassMaster()` | クラスマスタのバックアップを作成 |
+| `restoreClassMaster(backupSheetName)` | 指定されたバックアップから復元 |
+| `restoreFromLatestBackup()` | 最新のバックアップから復元 |
+| `listBackups()` | バックアップ一覧を表示 |
+| `cleanupOldBackups(keepCount)` | 古いバックアップを削除（デフォルト: 5件保持） |
 
 ### 実行手順
 
